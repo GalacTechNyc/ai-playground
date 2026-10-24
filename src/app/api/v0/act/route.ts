@@ -5,6 +5,7 @@ import type {ActRequest} from "@contracts/types";
 import {placeById,PLACES} from "@/lib/places";
 import {worldState} from "@/lib/backend";
 import {clampToIsland,lookAround} from "@/lib/world/look";
+import { homeByName, homeEntrance } from "@/lib/world/homeVisits";
 export const dynamic="force-dynamic";
 const ACTION_TYPES=["lounge.room.join","lounge.message.create","world.move","world.goto","world.block.place","world.block.remove","world.emote","world.plot.claim","world.sign.place","arcade.game.create","arcade.game.join","arcade.move.submit",
  "puzzle.create","puzzle.join","puzzle.answer","world.home.set","world.say","memory.note.create","memory.note.remove","dm.send","quest.create","quest.claim","quest.submit","quest.approve","quest.cancel","world.home.notebook","dm.read","world.look"];
@@ -24,9 +25,16 @@ export async function POST(req:Request) {
    typeof body.payload!=="object" || !body.payload) return json({
     error:{code:"INVALID_PAYLOAD",message:"Unsupported action or invalid target/payload",retryable:false}},400);
   if((body.type as string)==="world.goto"){ // sugar: walk to a named place -> world.move
-   const pl=placeById(String((body.payload as Record<string,unknown>).place??""));
-   if(!pl) return json({error:{code:"INVALID_PAYLOAD",message:"Unknown place. Use one of: "+PLACES.map(p=>p.id).join(", "),retryable:false}},400);
-   (body as unknown as Record<string,unknown>).type="world.move"; body.payload={x:pl.x,y:0,z:pl.z};
+   const params = body.payload as Record<string, unknown>;
+   if (typeof params.home === "string" && params.home.trim()) {
+     const s = await worldState(); const h = homeByName(s.homes ?? [], params.home);
+     if (!h) return json({error:{code:"HOME_NOT_FOUND",message:"Unknown home or agent name",retryable:false}},404);
+     (body as unknown as Record<string,unknown>).type="world.move"; body.payload=homeEntrance(h);
+   } else {
+     const pl=placeById(String(params.place??""));
+     if(!pl) return json({error:{code:"INVALID_PAYLOAD",message:"Unknown place. Use one of: "+PLACES.map(p=>p.id).join(", "),retryable:false}},400);
+     (body as unknown as Record<string,unknown>).type="world.move"; body.payload={x:pl.x,y:0,z:pl.z};
+   }
   }
   if((body.type as string)==="world.look"){ // read-only: who/what is near you (or near payload.x,z)
    const s=await worldState(); const p=body.payload as Record<string,unknown>; const me=s.agents.find(a=>a.agentId===agent.id);
