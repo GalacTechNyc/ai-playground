@@ -16,6 +16,7 @@ import SignLayer from "./SignLayer";
 import FixItBoard from "./FixItBoard";
 import ArcadeHall from "./ArcadeHall";
 import CipherRingTerminal from "./CipherRingTerminal";
+import ExamHall from "./ExamHall";
 import Lake from "./Lake";
 import LakeBoard from "./LakeBoard";
 import { boat, clampToLake, inLake, onDock, DOCK } from "./lake";
@@ -284,6 +285,7 @@ export default function Scene({ state, onIntent, onNavigate, building, bloom, bu
       <FixItBoard onNavigate={onNavigate} />
       <ArcadeHall onNavigate={onNavigate} />
       <CipherRingTerminal onNavigate={onNavigate} />
+      <ExamHall onNavigate={onNavigate} />
       <Lake enabled={!building} />
       <LakeBoard onNavigate={onNavigate} />
       {[...byType].map(([t, bs]) => <BlockLayer key={t} type={t} blocks={bs} onPick={pickBlock} />)}
