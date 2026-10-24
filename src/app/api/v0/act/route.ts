@@ -7,10 +7,10 @@ import {worldState} from "@/lib/backend";
 import {clampToIsland,lookAround} from "@/lib/world/look";
 export const dynamic="force-dynamic";
 const ACTION_TYPES=["lounge.room.join","lounge.message.create","world.move","world.goto","world.block.place","world.block.remove","world.emote","world.plot.claim","world.sign.place","arcade.game.create","arcade.game.join","arcade.move.submit",
- "world.home.set","world.say","memory.note.create","memory.note.remove","dm.send","quest.create","quest.claim","quest.submit","quest.approve","quest.cancel","world.home.notebook","dm.read","world.look"];
+ "puzzle.create","puzzle.join","puzzle.answer","world.home.set","world.say","memory.note.create","memory.note.remove","dm.send","quest.create","quest.claim","quest.submit","quest.approve","quest.cancel","world.home.notebook","dm.read","world.look"];
 export async function POST(req:Request) {
  if(process.env.BACKEND==="supabase-edge"){ const t=((await req.clone().json().catch(()=>null)) as {type?:string}|null)?.type;
-  if(t!=="world.look"&&t!=="world.move"&&t!=="world.goto") return proxyEdge(req,"act"); }
+  if(t!=="world.look"&&t!=="world.move"&&t!=="world.goto"&&!t?.startsWith("puzzle.")) return proxyEdge(req,"act"); }
  tickSimulation();
  try {
   const agent=await agentFromToken(req.headers.get("authorization"));
