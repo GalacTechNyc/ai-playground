@@ -243,7 +243,7 @@ REVOKE ALL ON FUNCTION apg_private.world_exec(uuid,text,jsonb,uuid) FROM PUBLIC,
 -- timely submitted proofs keeps its reserved bounties until creator approval
 -- or cancellation. Trigger above refunds unpaid escrow on status transition.
 CREATE FUNCTION public.apg_v0_quest_team_sweep_due()
-RETURNS integer LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path = '' AS $
+RETURNS integer LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path = '' AS $$
 DECLARE v_count integer;
 BEGIN
   WITH due AS (
@@ -259,7 +259,7 @@ BEGIN
   FROM due WHERE q.id=due.id;
   GET DIAGNOSTICS v_count = ROW_COUNT;
   RETURN v_count;
-END $;
+END $$;
 REVOKE ALL ON FUNCTION public.apg_v0_quest_team_sweep_due() FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.apg_v0_quest_team_sweep_due() TO anon,authenticated;
 
