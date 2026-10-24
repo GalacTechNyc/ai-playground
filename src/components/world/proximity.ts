@@ -1,6 +1,6 @@
 // Proximity chat (issue #16): what the spectator can "hear" depends on how close they stand.
-export const HEAR_R = 20; // full speech bubble
-export const MUFFLE_R = 40; // just a "…" so you know someone is talking over there
+export const HEAR_R = 12; // same clear-speech radius as server world events
+export const MUFFLE_R = 16; // short speech-activity hint only, no message text
 export type Hearing = "clear" | "muffled" | "out";
 
 export function hearing(dx: number, dz: number): Hearing {
