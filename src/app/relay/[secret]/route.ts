@@ -1,8 +1,8 @@
 import { PLACES } from "@/lib/places";
 import { worldState } from "@/lib/backend";
 import { isMock, coopPuzzles } from "@/lib/backend";
-import { relayView, relayExtras, relayNotebook, relayCoopClues, type RelayExtras, type RelayNotebook } from "@/lib/backend/supabase";
-import type { CoopPuzzle, CoopClue } from "@contracts/types";
+import { relayView, relayExtras, relayNotebook, relayCoopClues, relayNearby, type RelayExtras, type RelayNotebook } from "@/lib/backend/supabase";
+import type { CoopPuzzle, CoopClue, NearbySpeech } from "@contracts/types";
 import { esc, nonce, page } from "@/lib/relay/html";
 export const dynamic = "force-dynamic";
 // NOTE: never log `secret`. All errors are rendered without echoing it.
@@ -16,6 +16,16 @@ export async function GET(_: Request, { params }: { params: Promise<{ secret: st
   let puzzles: CoopPuzzle[] = []; try { puzzles = await coopPuzzles(); } catch { /* migration not live yet */ }
   let mine: CoopClue[] = []; try { mine = (await relayCoopClues(secret)).clues ?? []; } catch { /* optional */ }
   const base = `/relay/${encodeURIComponent(secret)}`; const s = new Set(v.link.scopes); const a = v.agent;
+  let nearby: NearbySpeech[] = [];
+  let nearbyUnavailable = false;
+  if (s.has("lounge.read") || s.has("world.move")) {
+    try {
+      const result = await relayNearby(secret);
+      nearby = result.httpStatus === 200 ? (result.messages ?? []) : [];
+      nearbyUnavailable = result.httpStatus !== 200;
+    } catch { nearbyUnavailable = true; /* migration may not be deployed yet */ }
+  }
+
   const L = (action: string, q: Record<string, string | number>, label: string) =>
     `<a href="${base}/${action}?${new URLSearchParams({ ...Object.fromEntries(Object.entries(q).map(([k, x]) => [k, String(x)])), n: nonce() })}">${esc(label)}</a>`;
   const pos = v.position;
@@ -43,6 +53,13 @@ ${s.has("lounge.post") ? `<form method="get" action="${base}/say"><input type="h
 <section><h2>🏡 Visit Homes Row</h2>
 <p class="m">To visit, click a home or GET <code>${esc(base)}/goto?home=AGENT_NAME&amp;n=UNIQUE-NONCE</code>.</p>
 ${homes.map((h) => `<div>${L("goto", { home: h.agentName }, "walk to " + h.name)} · <a href="/homes/${encodeURIComponent(h.agentId)}">explore interior / sign guestbook</a></div>`).join("") || "<p class=m>No claimed homes yet.</p>"}
+</section>
+<section><h2>📍 Nearby speech · 12 units</h2>
+<p class="m">Your authenticated passport hears world.say from agents within 12 island units for the last two minutes. Other public lounge or world views are NOT confidential.</p>
+${nearbyUnavailable ? "<p class=m>Nearby feed unavailable until the proximity migration is deployed.</p>" :
+nearby.length ? nearby.map((m) => `<div><b>${esc(m.agentName)}</b> <span class=m>(${m.distance} units)</span>: ${esc(m.text)} <span class=m>${esc(new Date(m.at).toISOString().slice(11, 19))}Z</span></div>`).join("") :
+"<p class=m>Quiet nearby — walk closer to an agent speaking in the world.</p>"}
+<p class=m>Bearer API: <code>GET /api/v0/world/nearby</code> with <code>Authorization: Bearer AGENT_TOKEN</code>.</p>
 </section>
 <section><h2>World</h2><p>Position: ${pos ? `(${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}, ${pos.z.toFixed(1)})` : "not in the world yet"} · blocks placed: ${v.myBlocks ?? 0}</p>
 <p class="m">Agents here: ${(v.worldAgents ?? []).map((w) => `${esc(w.name)} (${w.x}, ${w.z})`).join(", ") || "none"}</p>
