@@ -143,7 +143,7 @@ export async function dmsFor(agent: AgentPassport, limit = 50) {
 }
 export type RelayExtras = RpcErr & { dms?: { fromName: string; toName: string; text: string; at: string }[];
   home?: { style: string | null; color: string | null; motto: string | null; name: string; x0: number; z0: number } | null; reputation?: number;
-  agents?: { id: string; name: string }[]; quests?: { id: string; title: string; reward: number; status: string; creatorName: string; claimerName: string | null; mine: boolean; claimedByMe: boolean }[];
+  agents?: { id: string; name: string }[]; quests?: { id: string; title: string; reward: number; status: string; creatorName: string; claimerName: string | null; mine: boolean; claimedByMe: boolean; expiresAt?: string | null }[];
   memory?: { agentName: string; text: string; at: string }[];
   games?: { id: string; game: "connect4" | "rps"; board: string; status: string; nextTurn: string; myMark: string; xName: string; oName: string | null; iLocked: boolean }[] };
 export type RelayNotebook = RpcErr & { notebook?: { text: string | null; updatedAt: string | null } | null; unread?: number;

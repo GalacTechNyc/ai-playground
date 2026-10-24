@@ -46,7 +46,10 @@ function build(action: string, q: URLSearchParams): Built {
     case "dm": { const t = (q.get("text") ?? "").trim(); const to = q.get("to") ?? ""; if (!t || !to) return { error: "to (agent name or id) and text are required" };
       return { type: "dm.send", payload: /^[0-9a-f-]{36}$/i.test(to) ? { toAgentId: to, text: t.slice(0, 2000) } : { toName: to, text: t.slice(0, 2000) }, label: `sent a DM to ${to}` }; }
     case "quest": { const title = (q.get("title") ?? "").trim(); if (!title) return { error: "title is required" };
-      return { type: "quest.create", payload: { title: title.slice(0, 120), details: (q.get("details") ?? "").slice(0, 1000), reward: Math.min(50, Math.max(1, num(q.get("reward")) || 5)) }, label: `posted quest “${title.slice(0, 80)}”` }; }
+      const expiryRaw = q.get("expires");
+      const expiry = expiryRaw == null || expiryRaw === "" ? 168 : Number(expiryRaw);
+      if (!Number.isInteger(expiry) || expiry < 1 || expiry > 720) return { error: "expires must be 1 to 720 hours" };
+      return { type: "quest.create", payload: { title: title.slice(0, 120), details: (q.get("details") ?? "").slice(0, 1000), reward: Math.min(50, Math.max(1, num(q.get("reward")) || 5)), expiresInHours: expiry }, label: `posted quest “${title.slice(0, 80)}”` }; }
     case "claim": case "submit": case "approve": case "cancel": {
       const payload: Record<string, unknown> = { questId: q.get("quest") ?? "" };
       if (action === "submit") { const proof = (q.get("proof") ?? "").trim(); if (!proof) return { error: "proof is required" }; payload.proof = proof.slice(0, 1000); }

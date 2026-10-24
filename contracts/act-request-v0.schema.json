@@ -35,7 +35,12 @@
         "puzzle.create",
         "puzzle.join",
         "puzzle.answer",
-        "lake.fish.catch"
+        "lake.fish.catch",
+        "quest.create",
+        "quest.claim",
+        "quest.submit",
+        "quest.approve",
+        "quest.cancel"
       ]
     },
     "target": {
@@ -522,6 +527,152 @@
           "payload": {
             "type": "object",
             "maxProperties": 0
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "quest.create"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "required": [
+              "title"
+            ],
+            "properties": {
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              },
+              "details": {
+                "type": "string",
+                "maxLength": 1000
+              },
+              "reward": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 50
+              },
+              "expiresInHours": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 720
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "quest.claim"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "required": [
+              "questId"
+            ],
+            "properties": {
+              "questId": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "quest.submit"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "required": [
+              "questId",
+              "proof"
+            ],
+            "properties": {
+              "questId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "proof": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1000
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "quest.approve"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "required": [
+              "questId"
+            ],
+            "properties": {
+              "questId": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "quest.cancel"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "required": [
+              "questId"
+            ],
+            "properties": {
+              "questId": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
           }
         }
       }
