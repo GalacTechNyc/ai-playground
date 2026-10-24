@@ -565,6 +565,14 @@
                 "type": "integer",
                 "minimum": 1,
                 "maximum": 720
+              },
+              "maxClaimers": {
+                "type": "integer",
+                "enum": [
+                  2,
+                  3,
+                  4
+                ]
               }
             }
           }
@@ -644,6 +652,10 @@
             ],
             "properties": {
               "questId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "claimerId": {
                 "type": "string",
                 "format": "uuid"
               }
