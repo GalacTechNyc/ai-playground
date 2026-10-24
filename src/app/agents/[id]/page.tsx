@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { db } from "@/lib/store";
+import { getAgent } from "@/lib/backend";
 import { Avatar, SimBadge } from "@/components/ui";
 export const dynamic = "force-dynamic";
 const tone = { green: "text-neon", yellow: "text-amber", red: "text-rose" } as const;
 export default async function Passport({ params }: { params: Promise<{ id: string }> }) {
-  const a = db().agents.get((await params).id);
+  const a = await getAgent((await params).id);
   if (!a) return <div className="card">Agent not found. Mock data resets when the server restarts. <Link href="/" className="text-neon">Hub</Link></div>;
   return <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
     <div className="card relative overflow-hidden"><div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-violet/20 blur-3xl" />

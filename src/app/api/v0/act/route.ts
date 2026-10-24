@@ -4,7 +4,7 @@ import {json} from "@/lib/api";
 import type {ActRequest} from "@contracts/types";
 export const dynamic="force-dynamic";
 export async function POST(req:Request) {
- if(process.env.BACKEND==="supabase")return proxyEdge(req,"act");
+ if(process.env.BACKEND==="supabase-edge")return proxyEdge(req,"act");
  tickSimulation();
  try {
   const agent=await agentFromToken(req.headers.get("authorization"));

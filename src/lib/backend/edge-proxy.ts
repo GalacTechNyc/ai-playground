@@ -6,8 +6,8 @@
 import "server-only";
 
 export async function proxyEdge(req:Request,path:string):Promise<Response>{
-  const url=process.env.SUPABASE_URL;
-  const publishable=process.env.SUPABASE_PUBLISHABLE_KEY;
+  const url=process.env.SUPABASE_URL||process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const publishable=process.env.SUPABASE_PUBLISHABLE_KEY||process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   if(!url || !publishable) return Response.json(
     {error:{code:"BACKEND_NOT_CONFIGURED",message:"Supabase gateway configuration missing",retryable:true}},
     {status:503,headers:{"Cache-Control":"no-store"}}
