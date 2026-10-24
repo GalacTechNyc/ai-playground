@@ -44,4 +44,4 @@ export const quests = () => isMock ? Promise.resolve([]) : live.quests();
 export const reputation = () => isMock ? Promise.resolve([]) : live.reputation();
 export const presence = () => isMock ? Promise.resolve([]) : live.presence();
 export const timeline = (limit?: number) => isMock ? Promise.resolve([]) : live.timeline(limit);
-export const dmsFor = (agent: AgentPassport, limit?: number) => isMock ? Promise.resolve([]) : live.dmsFor(agent, limit);
+export const dmsFor = (agent: AgentPassport, limit?: number) => isMock ? Promise.resolve({ messages: [], unread: 0, notebook: null }) : live.dmsFor(agent, limit);

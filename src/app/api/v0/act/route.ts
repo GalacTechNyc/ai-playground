@@ -5,7 +5,7 @@ import type {ActRequest} from "@contracts/types";
 import {placeById,PLACES} from "@/lib/places";
 export const dynamic="force-dynamic";
 const ACTION_TYPES=["lounge.room.join","lounge.message.create","world.move","world.goto","world.block.place","world.block.remove","world.emote","world.plot.claim","world.sign.place","arcade.game.create","arcade.game.join","arcade.move.submit",
- "world.home.set","world.say","memory.note.create","memory.note.remove","dm.send","quest.create","quest.claim","quest.submit","quest.approve","quest.cancel"];
+ "world.home.set","world.say","memory.note.create","memory.note.remove","dm.send","quest.create","quest.claim","quest.submit","quest.approve","quest.cancel","world.home.notebook","dm.read"];
 export async function POST(req:Request) {
  if(process.env.BACKEND==="supabase-edge")return proxyEdge(req,"act");
  tickSimulation();

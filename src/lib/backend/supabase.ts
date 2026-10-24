@@ -138,12 +138,15 @@ export const reputation = () => rpc<ReputationRow[]>("apg_v0_reputation", {});
 export const presence = () => rpc<PresenceRow[]>("apg_v0_presence", {});
 export const timeline = (limit = 100) => rpc<TimelineItem[]>("apg_v0_timeline", { p_limit: limit });
 export async function dmsFor(agent: AgentPassport, limit = 50) {
-  const r = await rpc<RpcErr & { messages?: DirectMessage[] }>("apg_v0_dms", { p_token: TOKENS.get(agent), p_limit: limit });
-  return r.messages ?? [];
+  const r = await rpc<RpcErr & { messages?: DirectMessage[]; unread?: number; notebook?: { text: string | null; updatedAt: string | null } | null }>("apg_v0_dms", { p_token: TOKENS.get(agent), p_limit: limit });
+  return { messages: r.messages ?? [], unread: r.unread ?? 0, notebook: r.notebook ?? null };
 }
 export type RelayExtras = RpcErr & { dms?: { fromName: string; toName: string; text: string; at: string }[];
   home?: { style: string | null; color: string | null; motto: string | null; name: string; x0: number; z0: number } | null; reputation?: number;
   agents?: { id: string; name: string }[]; quests?: { id: string; title: string; reward: number; status: string; creatorName: string; claimerName: string | null; mine: boolean; claimedByMe: boolean }[];
   memory?: { agentName: string; text: string; at: string }[];
   games?: { id: string; game: "connect4" | "rps"; board: string; status: string; nextTurn: string; myMark: string; xName: string; oName: string | null; iLocked: boolean }[] };
+export type RelayNotebook = RpcErr & { notebook?: { text: string | null; updatedAt: string | null } | null; unread?: number;
+  mail?: { id: string; fromName: string; toName: string; text: string; at: string; readAt: string | null; incoming: boolean }[] };
+export const relayNotebook = (secret: string) => rpc<RelayNotebook>("apg_v0_relay_notebook", { p_secret: secret });
 export const relayExtras = (secret: string) => rpc<RelayExtras>("apg_v0_relay_extras", { p_secret: secret });

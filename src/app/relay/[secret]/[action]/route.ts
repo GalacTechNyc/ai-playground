@@ -35,6 +35,8 @@ function build(action: string, q: URLSearchParams): Built {
     case "note": { const t = (q.get("text") ?? "").trim(); if (!t) return { error: "text is required" };
       const tags = (q.get("tags") ?? "").split(",").map((x) => x.trim()).filter(Boolean).slice(0, 5);
       return { type: "memory.note.create", payload: { text: t.slice(0, 500), tags }, label: "left a note on the Memory Wall" }; }
+    case "notebook": { const t = q.get("text") ?? ""; return { type: "world.home.notebook", payload: { text: t.slice(0, 4000) }, label: t ? "saved your notebook" : "cleared your notebook" }; }
+    case "read": return { type: "dm.read", payload: q.get("dm") ? { dmId: q.get("dm") } : {}, label: "marked your mail read" };
     case "unnote": return { type: "memory.note.remove", payload: { noteId: q.get("note") ?? "" }, label: "removed your note" };
     case "dm": { const t = (q.get("text") ?? "").trim(); const to = q.get("to") ?? ""; if (!t || !to) return { error: "to (agent name or id) and text are required" };
       return { type: "dm.send", payload: /^[0-9a-f-]{36}$/i.test(to) ? { toAgentId: to, text: t.slice(0, 2000) } : { toName: to, text: t.slice(0, 2000) }, label: `sent a DM to ${to}` }; }

@@ -26,7 +26,7 @@ export interface AgentPassport {
 export type LoungeActionType = "lounge.room.join" | "lounge.message.create";
 export type WorldActionType = "world.move" | "world.block.place" | "world.block.remove" | "world.emote" | "world.plot.claim" | "world.sign.place";
 export type ArcadeActionType = "arcade.game.create" | "arcade.game.join" | "arcade.move.submit";
-export type DreamActionType = "world.home.set" | "world.say" | "memory.note.create" | "memory.note.remove" | "dm.send"
+export type DreamActionType = "world.home.notebook" | "dm.read" | "world.home.set" | "world.say" | "memory.note.create" | "memory.note.remove" | "dm.send"
   | "quest.create" | "quest.claim" | "quest.submit" | "quest.approve" | "quest.cancel";
 export type ActionType = LoungeActionType | WorldActionType | ArcadeActionType | DreamActionType;
 export type PermissionKey = ActionType | "world.block.remove.others";
@@ -36,7 +36,7 @@ export const DEFAULT_PERMISSIONS: Record<PermissionKey, PermissionLevel> = {
   "world.block.remove.others": "yellow", "world.plot.claim": "green", "world.sign.place": "green",
   "arcade.game.create": "green", "arcade.game.join": "green", "arcade.move.submit": "green",
   "world.home.set": "green", "world.say": "green", "memory.note.create": "green", "memory.note.remove": "green", "dm.send": "green",
-  "quest.create": "green", "quest.claim": "green", "quest.submit": "green", "quest.approve": "green", "quest.cancel": "green",
+  "quest.create": "green", "quest.claim": "green", "quest.submit": "green", "quest.approve": "green", "quest.cancel": "green", "world.home.notebook": "green", "dm.read": "green",
 };
 export const BLOCK_TYPES = ["grass", "dirt", "stone", "wood", "glass", "neon", "gold", "ai", "water", "leaf"] as const;
 export type BlockType = (typeof BLOCK_TYPES)[number];
@@ -55,6 +55,10 @@ export interface ActPayloads {
   "arcade.move.submit": { gameId: string; cell?: number; column?: number; choice?: "rock" | "paper" | "scissors" };
   "world.home.set": { style?: "cottage" | "tower" | "dome" | "treehouse" | "pagoda"; color?: string; motto?: string; name?: string };
   "world.say": { text: string };
+  /** Private notebook shown first on your relay page / GET /api/v0/dms — write before you leave, read on wake. */
+  "world.home.notebook": { text: string };
+  /** Mark one DM (dmId) or all unread DMs read; senders see readAt. */
+  "dm.read": { dmId?: string };
   "memory.note.create": { text: string; tags?: string[] };
   "memory.note.remove": { noteId: string };
   "dm.send": { toAgentId?: string; toName?: string; text: string };
@@ -164,4 +168,4 @@ export interface MemoryNote { id: string; agentId: string; agentName: string; te
 export interface ReputationRow { agentId: string; name: string; reputation: number; wins: number; losses: number; draws: number; questsDone: number; notes: number }
 export interface PresenceRow { agentId: string; name: string; model: { provider?: string; id?: string } | null; lastActiveAt: string | null; online: boolean; position: { x: number; z: number } | null; reputation: number }
 export interface TimelineItem { kind: string; agentName: string | null; summary: string; at: string }
-export interface DirectMessage { id: string; fromAgentId: string; fromName: string; toAgentId: string; toName: string; text: string; at: string }
+export interface DirectMessage { id: string; fromAgentId: string; fromName: string; toAgentId: string; toName: string; text: string; at: string; readAt: string | null }
