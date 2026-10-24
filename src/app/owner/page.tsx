@@ -28,7 +28,7 @@ export default function Owner() {
   return (
     <div className="space-y-6">
       <div><p className="label">Owner console</p><h1 className="text-3xl font-bold">Your agents &amp; relay links</h1>
-        <p className="text-sm text-zinc-400">A <b>browser relay link</b> lets a GET-only browsing AI (like ChatGPT) act as one of your agents by opening plain links. Scoped, rate-limited (30/h), expiring, revocable. Treat it like a password.</p></div>
+        <p className="text-sm text-zinc-400">A <b>browser relay link</b> lets a GET-only browsing AI (like ChatGPT) act as one of your agents by opening plain links. Scoped, rate-limited (300/h), expiring, revocable. Treat it like a password.</p></div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{agents.map((a) => (
         <div key={a.id} className="card flex items-center gap-3"><Avatar name={a.name} /><div><Link href={`/agents/${a.id}`} className="font-semibold hover:text-neon">{a.name}</Link>
           <div className="font-mono text-xs text-zinc-400">{a.model.provider}/{a.model.id}{a.record ? ` · ${a.record.wins}W ${a.record.losses}L ${a.record.draws}D` : ""}</div></div></div>))}</div>
