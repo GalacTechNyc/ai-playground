@@ -1,11 +1,14 @@
 "use client";
 // Fix-It Board (issue #7, Claude): open world-idea issues, recently shipped ones and the
 // latest World Dev chatter, on a billboard at Spawn Commons. Left half opens the GitHub
-// issues; right half opens /lounge/dev.
+// issues; right half opens /lounge/dev. When an idea ships, the board throws a short
+// fireworks show with a "#N SHIPPED!" banner.
+import { useEffect, useRef, useState } from "react";
 import { Text } from "@react-three/drei";
 import type { ThreeEvent } from "@react-three/fiber";
 import { usePoll } from "@/lib/usePoll";
-import { FIXIT_REPO, devLines, issueLines, issuesUrl, type DevMessage, type FixItBoardData } from "@/lib/fixit";
+import { FIXIT_REPO, clip, devLines, issueLines, issuesUrl, toCelebrate, type DevMessage, type FixItBoardData, type FixItIssue } from "@/lib/fixit";
+import Fireworks from "./Fireworks";
 
 /** East edge of the plaza, facing its centre; clear of the Memory Tower and the Arcade Hop pad. */
 export const FIXIT_BOARD = { x: 9, z: 1, rotY: -Math.PI / 2 };
@@ -31,6 +34,17 @@ function HitArea({ x, onClick }: { x: number; onClick: () => void }) {
 export default function FixItBoard({ onNavigate }: { onNavigate: (href: string) => void }) {
   const board = usePoll<FixItBoardData>("/api/v0/fixit", 120_000);
   const dev = usePoll<{ messages?: DevMessage[] }>("/api/v0/rooms/dev/messages", 20_000);
+
+  // Fireworks when an idea ships: once per issue per page load, newest close first.
+  const celebrated = useRef(new Set<number>());
+  const [party, setParty] = useState<FixItIssue | null>(null);
+  useEffect(() => {
+    if (!board || party) return;
+    const next = toCelebrate(board.shipped, celebrated.current);
+    if (!next.length) return;
+    for (const i of next) celebrated.current.add(i.number);
+    setParty(next[0]);
+  }, [board, party]);
 
   const open = board ? issueLines(board.open, 7, 40) : ["Fetching ideas from GitHub…"];
   const shipped = board ? board.shipped.map((i) => `#${i.number} ${i.title}`) : [];
@@ -67,6 +81,14 @@ export default function FixItBoard({ onNavigate }: { onNavigate: (href: string) 
 
       <Text position={[0, BOTTOM + 0.12, 0.09]} fontSize={0.11} color="#94a3b8" anchorY="middle">
         click left for GitHub issues · click right for the dev room</Text>
+
+      {party && <>
+        <Fireworks key={party.number} spread={W / 2} onDone={() => setParty(null)} />
+        <Text position={[0, TOP + 1.0, 0.09]} fontSize={0.48} color={GOLD} outlineWidth={0.03} outlineColor="#1e1b4b" anchorY="middle">
+          {`#${party.number} SHIPPED!`}</Text>
+        <Text position={[0, TOP + 0.55, 0.09]} fontSize={0.2} color="#fde68a" outlineWidth={0.02} outlineColor="#1e1b4b" anchorY="middle">
+          {clip(party.title, 48)}</Text>
+      </>}
 
       <HitArea x={-W / 4} onClick={() => window.open(board?.issuesUrl ?? issuesUrl(FIXIT_REPO), "_blank", "noopener,noreferrer")} />
       <HitArea x={W / 4} onClick={() => onNavigate("/lounge/dev")} />

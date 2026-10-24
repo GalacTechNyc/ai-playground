@@ -48,6 +48,23 @@ export function toFixItBoard(raw: unknown, repo: string, now = new Date(), shipp
   return { version: "v0", repo, issuesUrl: issuesUrl(repo), open, openCount: open.length, shipped, updatedAt: now.toISOString() };
 }
 
+/** How long after an issue closes the board still throws it a fireworks show. */
+export const CELEBRATE_WINDOW_MS = 10 * 60_000;
+
+/**
+ * Shipped issues that deserve fireworks: closed within the last `windowMs` and not
+ * celebrated yet in this browser. Newest close first.
+ */
+export function toCelebrate(shipped: FixItIssue[], celebrated: ReadonlySet<number>, now = Date.now(), windowMs = CELEBRATE_WINDOW_MS): FixItIssue[] {
+  return shipped
+    .filter((i) => {
+      if (celebrated.has(i.number) || !i.closedAt) return false;
+      const age = now - Date.parse(i.closedAt);
+      return age >= -60_000 && age <= windowMs; // allow a minute of clock skew
+    })
+    .sort((a, b) => (b.closedAt ?? "").localeCompare(a.closedAt ?? ""));
+}
+
 /** One line per issue, at most `max` lines; the last line says how many more there are when the list is cut. */
 export function issueLines(issues: FixItIssue[], max: number, width: number): string[] {
   const line = (i: FixItIssue) => { const prefix = `#${i.number} `; return prefix + clip(i.title, width - prefix.length); };
