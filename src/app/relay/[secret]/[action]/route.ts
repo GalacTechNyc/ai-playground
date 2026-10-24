@@ -21,7 +21,29 @@ function build(action: string, q: URLSearchParams): Built {
       return { type: "world.block.remove", payload: { x, y, z }, label: `removed the block at (${x}, ${y}, ${z})` }; }
     case "sign": { const [x, y, z] = ["x", "y", "z"].map((k) => num(q.get(k))); const text = q.get("text") ?? ""; if ([x, z].some(Number.isNaN) || !text) return { error: "x, z, text required" };
       return { type: "world.sign.place", payload: { x, y: Number.isNaN(y) ? 0 : y, z, text: text.slice(0, 140) }, label: `put up a sign “${text.slice(0, 140)}”` }; }
-    case "newgame": return { type: "arcade.game.create", payload: { game: "tictactoe", ...(q.get("opponent") ? { opponentAgentId: q.get("opponent") } : {}) }, label: "opened a tic-tac-toe game" };
+    case "newgame": { const game = ["connect4", "rps"].includes(q.get("game") ?? "") ? q.get("game")! : "tictactoe";
+      return { type: "arcade.game.create", payload: { game, ...(q.get("opponent") ? { opponentAgentId: q.get("opponent") } : {}) }, label: `opened a ${game} game` }; }
+    case "drop": { const column = num(q.get("column")); if (!Number.isInteger(column)) return { error: "column must be 0-6" };
+      return { type: "arcade.move.submit", payload: { gameId: q.get("game") ?? "", column }, label: `dropped a disc in column ${column}` }; }
+    case "throw": { const choice = (q.get("choice") ?? "").toLowerCase(); if (!["rock", "paper", "scissors"].includes(choice)) return { error: "choice must be rock, paper or scissors" };
+      return { type: "arcade.move.submit", payload: { gameId: q.get("game") ?? "", choice }, label: `threw ${choice}` }; }
+    case "home": { const payload: Record<string, unknown> = {};
+      for (const k of ["style", "color", "motto", "name"]) { const v = q.get(k); if (v !== null) payload[k] = k === "color" && !v.startsWith("#") ? "#" + v : v; }
+      return { type: "world.home.set", payload, label: "updated your home" }; }
+    case "speak": { const t = (q.get("text") ?? "").trim(); if (!t) return { error: "text is required" };
+      return { type: "world.say", payload: { text: t.slice(0, 140) }, label: `said out loud “${t.slice(0, 80)}”` }; }
+    case "note": { const t = (q.get("text") ?? "").trim(); if (!t) return { error: "text is required" };
+      const tags = (q.get("tags") ?? "").split(",").map((x) => x.trim()).filter(Boolean).slice(0, 5);
+      return { type: "memory.note.create", payload: { text: t.slice(0, 500), tags }, label: "left a note on the Memory Wall" }; }
+    case "unnote": return { type: "memory.note.remove", payload: { noteId: q.get("note") ?? "" }, label: "removed your note" };
+    case "dm": { const t = (q.get("text") ?? "").trim(); const to = q.get("to") ?? ""; if (!t || !to) return { error: "to (agent name or id) and text are required" };
+      return { type: "dm.send", payload: /^[0-9a-f-]{36}$/i.test(to) ? { toAgentId: to, text: t.slice(0, 2000) } : { toName: to, text: t.slice(0, 2000) }, label: `sent a DM to ${to}` }; }
+    case "quest": { const title = (q.get("title") ?? "").trim(); if (!title) return { error: "title is required" };
+      return { type: "quest.create", payload: { title: title.slice(0, 120), details: (q.get("details") ?? "").slice(0, 1000), reward: Math.min(50, Math.max(1, num(q.get("reward")) || 5)) }, label: `posted quest “${title.slice(0, 80)}”` }; }
+    case "claim": case "submit": case "approve": case "cancel": {
+      const payload: Record<string, unknown> = { questId: q.get("quest") ?? "" };
+      if (action === "submit") { const proof = (q.get("proof") ?? "").trim(); if (!proof) return { error: "proof is required" }; payload.proof = proof.slice(0, 1000); }
+      return { type: "quest." + action, payload, label: `${({ claim: "claimed", submit: "turned in", approve: "approved", cancel: "cancelled/dropped" } as Record<string, string>)[action]} the quest` }; }
     case "joingame": return { type: "arcade.game.join", payload: { gameId: q.get("game") ?? "" }, label: "joined the game" };
     case "play": { const cell = num(q.get("cell")); if (!Number.isInteger(cell)) return { error: "cell must be 0-8" };
       return { type: "arcade.move.submit", payload: { gameId: q.get("game") ?? "", cell }, label: `played cell ${cell}` }; }

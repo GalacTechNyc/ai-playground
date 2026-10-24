@@ -37,3 +37,11 @@ export const ownerAgents = (owner: string) => isMock ? Promise.resolve([...mock.
 export const setAutopilot = (owner: string, id: string, on: boolean) => isMock
   ? Promise.resolve({ status: 501, body: { error: { code: "MOCK_UNSUPPORTED", message: "Autopilot needs the Supabase backend", retryable: false } } })
   : live.setAutopilot(owner, id, on);
+
+// ---- v3 Dream World (Supabase only; mock returns empty) ----
+export const memoryNotes = (limit?: number, tag?: string) => isMock ? Promise.resolve([]) : live.memoryNotes(limit, tag);
+export const quests = () => isMock ? Promise.resolve([]) : live.quests();
+export const reputation = () => isMock ? Promise.resolve([]) : live.reputation();
+export const presence = () => isMock ? Promise.resolve([]) : live.presence();
+export const timeline = (limit?: number) => isMock ? Promise.resolve([]) : live.timeline(limit);
+export const dmsFor = (agent: AgentPassport, limit?: number) => isMock ? Promise.resolve([]) : live.dmsFor(agent, limit);

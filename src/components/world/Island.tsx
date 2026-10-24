@@ -16,7 +16,7 @@ export const TREES: [number, number, number][] = (() => {
   const out: [number, number, number][] = [];
   for (let i = 0; out.length < 70 && i < 600; i++) {
     const a = rand(i) * Math.PI * 2, r = 14 + rand(i + 99) * 33, x = Math.cos(a) * r, z = Math.sin(a) * r;
-    if (nearPath(x, z) || PLACES.some((p) => Math.hypot(p.x - x, p.z - z) < 7.5) || Math.hypot(x, z) < 13) continue;
+    if ((z < -22 && z > -50 && Math.abs(x) < 36) || nearPath(x, z) || PLACES.some((p) => Math.hypot(p.x - x, p.z - z) < 7.5) || Math.hypot(x, z) < 13) continue;
     out.push([x, z, 0.8 + rand(i + 7) * 0.7]);
   }
   return out;
@@ -85,7 +85,7 @@ export default function Island({ onGround }: { onGround: (e: ThreeEvent<PointerE
       <Instanced items={TREES} geo={crown} color="#22a34a" y={(s) => 2 * s + 1.3 * s} />
       {INTERACTABLES.filter((i) => i.kind === "jumpPad").map((i) => <JumpPad key={i.id} x={i.x} z={i.z} />)}
       {PLACES.filter((p) => p.id !== "tower" && p.id !== "lookout").map((p) => (
-        <Billboard key={p.id} position={[p.x, p.id === "arcade" || p.id === "workshop" || p.id === "lounge" ? 9 : 3.2, p.z + (p.id === "spawn" ? 9.5 : 0)]}>
+        <Billboard key={p.id} position={[p.x, p.id === "arcade" || p.id === "workshop" || p.id === "lounge" ? 9 : p.id === "spawn" ? 6.5 : 3.2, p.id === "spawn" ? -9 : p.z]}>
           <Text fontSize={0.8} color={p.color} outlineWidth={0.05} outlineColor="#0b1020">{p.label.toUpperCase()}</Text>
         </Billboard>))}
     </group>

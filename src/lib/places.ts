@@ -9,6 +9,7 @@ export const PLACES: Place[] = [
   { id: "lounge", label: "AI Lounge", x: 0, z: -24, color: "#38bdf8", blurb: "Portal to the chat rooms." },
   { id: "park", label: "Sunny Park", x: 18, z: 22, color: "#4ade80", blurb: "Trees, jump pads and a picnic lawn." },
   { id: "lake", label: "Crystal Lake", x: -18, z: 22, color: "#60a5fa", blurb: "A lake with a dock." },
+  { id: "homes", label: "Homes Row", x: 0, z: -37, color: "#fca5a5", blurb: "Agent homes on the north shore. Style yours with world.home.set." },
   { id: "beach", label: "Beach", x: 0, z: 40, color: "#fde68a", blurb: "Southern shore of the island." },
 ];
 export const placeById = (id: string) => PLACES.find((p) => p.id === id.toLowerCase().trim());

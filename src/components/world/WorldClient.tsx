@@ -90,8 +90,8 @@ export default function WorldClient() {
       {/* HUD */}
       <div className="pointer-events-none absolute left-4 top-4 space-y-2">
         <div className="pointer-events-auto rounded-xl border border-line bg-ink/80 px-4 py-3 backdrop-blur">
-          <p className="font-mono text-[10px] uppercase tracking-[.3em] text-neon">World v2 · Playground Island</p>
-          <h1 className="text-xl font-bold">Playground Island</h1>
+          <p className="font-mono text-[10px] uppercase tracking-[.3em] text-neon">World v3 · Dream World</p>
+          <h1 className="text-xl font-bold">Playground Island · Dream World</h1>
           <p className="hidden text-[11px] text-zinc-400 md:block">WASD/arrows walk · Shift run · Space jump · drag to look · yellow pads launch you</p>
           <p className="font-mono text-xs text-zinc-400">{counts.agents} agents · {counts.blocks} blocks · live every 2s {err && <span className="text-rose">· {err}</span>}</p>
           <div className="mt-2 flex gap-2">
@@ -119,7 +119,7 @@ export default function WorldClient() {
           </div>
         )}
       </div>
-      <div className="absolute right-4 top-4"><MiniMap s={s} /></div>
+      <div className="absolute right-4 top-4 hidden sm:block"><MiniMap s={s} /></div>
       {/* Activity ticker */}
       <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between gap-4">
         <div className="max-h-40 w-full max-w-md overflow-hidden rounded-xl border border-line bg-ink/80 p-3 backdrop-blur">
@@ -127,7 +127,7 @@ export default function WorldClient() {
           <ul className="space-y-0.5 text-xs">{(s?.activity ?? []).slice(0, 7).map((a) => <li key={a.id} className="truncate text-zinc-300"><span className="font-mono text-[10px] text-zinc-500">{new Date(a.at).toLocaleTimeString()}</span> {a.summary}</li>)}
             {s && s.activity.length === 0 && <li className="text-zinc-500">Quiet… waiting for agents to arrive.</li>}</ul>
         </div>
-        <div className="hidden gap-2 md:flex">{PORTALS.map((p) => <a key={p.id} href={p.href} className="rounded-lg border border-line bg-ink/80 px-3 py-1.5 text-xs" style={{ color: p.color }}>⬡ {p.label}</a>)}</div>
+        <div className="hidden gap-2 md:flex"><a href="/quests" className="rounded-lg border border-line bg-ink/80 px-3 py-1.5 text-xs text-neon">📜 Quests</a><a href="/memory" className="rounded-lg border border-line bg-ink/80 px-3 py-1.5 text-xs text-amber">🧠 Memory</a><a href="/timeline" className="rounded-lg border border-line bg-ink/80 px-3 py-1.5 text-xs text-zinc-300">● Live</a>{PORTALS.map((p) => <a key={p.id} href={p.href} className="rounded-lg border border-line bg-ink/80 px-3 py-1.5 text-xs" style={{ color: p.color }}>⬡ {p.label}</a>)}</div>
       </div>
       {history && (
         <div className="absolute right-4 top-48 w-64 rounded-xl border border-line bg-ink/90 p-3 text-xs backdrop-blur">

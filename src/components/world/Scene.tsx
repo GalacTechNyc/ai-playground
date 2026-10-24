@@ -4,11 +4,12 @@ import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber"
 import { Billboard, OrbitControls, Text, Sparkles, Stars } from "@react-three/drei";
 import { EffectComposer, Bloom, Vignette } from "@react-three/postprocessing";
 import * as THREE from "three";
-import type { BlockType, WorldAgent, WorldBlock, WorldState } from "@contracts/types";
+import type { BlockType, WorldAgent, WorldBlock, WorldSign, WorldState } from "@contracts/types";
 import { BLOCK_STYLE, PORTALS, agentHue } from "./blocks";
 import Island, { ISLAND_R } from "./Island";
 import { INTERACTABLES } from "./interactables";
 import { input, player } from "./controls";
+import Dream from "./Dream";
 import TraversalKit from "./TraversalKit";
 import type { PortalStation } from "@/lib/world/traversal";
 
@@ -72,7 +73,7 @@ function Avatar({ a, bubble }: { a: WorldAgent; bubble?: string }) {
       <group ref={body}><Blocky color={color} walk={anim.walk} emote={emote} t={anim.t} /></group>
       <mesh rotation-x={-Math.PI / 2} position={[0, 0.05, 0]}><ringGeometry args={[0.55, 0.7, 32]} /><meshBasicMaterial color={color} transparent opacity={0.7} toneMapped={false} /></mesh>
       <Billboard position={[0, 2.75, 0]}>
-        <Text fontSize={0.36} color="#fff" outlineWidth={0.04} outlineColor="#0b1020" anchorY="bottom">{a.name}{a.isSimulated ? " (sim)" : ""}</Text>
+        <Text fontSize={0.36} color="#fff" outlineWidth={0.04} outlineColor="#0b1020" anchorY="bottom">{a.lastActiveAt && Date.now() - Date.parse(a.lastActiveAt) < 600000 ? "● " : "○ "}{a.name}{a.isSimulated ? " (sim)" : ""}</Text>
         {emote && <Text position={[0, 0.45, 0]} fontSize={0.3} color="#fbbf24" anchorY="bottom">✦ {emote}</Text>}
         {bubble && <group position={[0, emote ? 1.0 : 0.6, 0]}>
           <Text fontSize={0.3} maxWidth={5} color="#0b1020" anchorY="bottom" textAlign="center">{bubble.length > 90 ? bubble.slice(0, 88) + "…" : bubble}
@@ -167,6 +168,17 @@ function Portal({ p, onEnter }: { p: (typeof PORTALS)[number]; onEnter: (href: s
   );
 }
 
+/** Signs that sit within ~1.5 units of each other stack upward instead of overlapping (v2 rough spot). */
+function stackedSigns(signs: WorldSign[]) {
+  const placed: { s: WorldSign; k: number }[] = [];
+  for (const s of [...signs].sort((a, b) => a.y - b.y || a.id.localeCompare(b.id))) {
+    const w = (t: WorldSign) => Math.max(2, Math.min(t.text.length, 36) * 0.32);
+    let k = 0; while (placed.some((p) => p.k === k && Math.hypot(p.s.x - s.x, p.s.z - s.z) < (w(p.s) + w(s)) / 2 + 0.3 && Math.abs(p.s.y - s.y) < 1)) k++;
+    placed.push({ s, k });
+  }
+  return placed;
+}
+
 export default function Scene({ state, onIntent, onNavigate, building, bloom, bubbles }: {
   bubbles?: Record<string, string>; state: WorldState | null; onIntent: (i: BuildIntent) => void; onNavigate: (href: string) => void; building: boolean; bloom: boolean;
 }) {
@@ -194,9 +206,10 @@ export default function Scene({ state, onIntent, onNavigate, building, bloom, bu
           <Billboard position={[p.x0 + 4, 0.4, p.z0 + 8.3]}><Text fontSize={0.35} color="#e7e5f4">{p.name}</Text></Billboard>
         </group>
       ))}
+      <Dream state={state} onNavigate={onNavigate} />
       {[...byType].map(([t, bs]) => <BlockLayer key={t} type={t} blocks={bs} onPick={pickBlock} />)}
-      {(state?.signs ?? []).map((s) => (
-        <Billboard key={s.id} position={[s.x, s.y + 0.6, s.z]}>
+      {stackedSigns(state?.signs ?? []).map(({ s, k }) => (
+        <Billboard key={s.id} position={[s.x, s.y + 0.6 + k * 1.0, s.z]}>
           <mesh position={[0, 0, -0.01]}><planeGeometry args={[Math.max(2, Math.min(s.text.length, 36) * 0.32), 0.7 + Math.floor((s.text.length - 1) / 36) * 0.45]} /><meshBasicMaterial color="#0f0d1a" transparent opacity={0.85} /></mesh>
           <Text fontSize={0.38} color="#7cf7d4" maxWidth={11.5} textAlign="center" anchorX="center" anchorY="middle">{s.text}</Text>
         </Billboard>
@@ -204,7 +217,7 @@ export default function Scene({ state, onIntent, onNavigate, building, bloom, bu
       {PORTALS.map((p) => <Portal key={p.id} p={p} onEnter={onNavigate} />)}
       <TraversalKit playerPosition={player.pos} enabled={!building} showPortals={false} portals={PORTAL_STATIONS}
         onLaunch={(_, impulse) => { player.impulse = { ...impulse }; }} onEnterPortal={(portal) => onNavigate(portal.href)} />
-      {(state?.agents ?? []).map((a) => <Avatar key={a.agentId} a={a} bubble={bubbles?.[a.agentId]} />)}
+      {(state?.agents ?? []).map((a) => <Avatar key={a.agentId} a={a} bubble={a.say || bubbles?.[a.agentId]} />)}
       <OrbitControls makeDefault enableDamping maxPolarAngle={Math.PI / 2.05} minDistance={3} maxDistance={70} target={[0, 1.6, 8]} enablePan={false} />
       {bloom && !hover && (
         <EffectComposer multisampling={0}>

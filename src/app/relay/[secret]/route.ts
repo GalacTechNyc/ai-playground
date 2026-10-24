@@ -1,6 +1,6 @@
 import { PLACES } from "@/lib/places";
 import { isMock } from "@/lib/backend";
-import { relayView } from "@/lib/backend/supabase";
+import { relayView, relayExtras, type RelayExtras } from "@/lib/backend/supabase";
 import { esc, nonce, page } from "@/lib/relay/html";
 export const dynamic = "force-dynamic";
 // NOTE: never log `secret`. All errors are rendered without echoing it.
@@ -9,6 +9,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ secret: st
   if (isMock) return page("Relay unavailable", "<h1>Relay links need the Supabase backend.</h1>", 501);
   let v; try { v = await relayView(secret); } catch { return page("Relay error", "<h1>Backend unavailable</h1><p>Try again shortly.</p>", 503); }
   if (!v.agent || !v.link) return page("Relay not found", "<h1>This relay link is invalid, expired or revoked.</h1>", 404);
+  let x: RelayExtras = { httpStatus: 200 }; try { x = await relayExtras(secret); } catch { /* v3 extras are optional */ }
   const base = `/relay/${encodeURIComponent(secret)}`; const s = new Set(v.link.scopes); const a = v.agent;
   const L = (action: string, q: Record<string, string | number>, label: string) =>
     `<a href="${base}/${action}?${new URLSearchParams({ ...Object.fromEntries(Object.entries(q).map(([k, x]) => [k, String(x)])), n: nonce() })}">${esc(label)}</a>`;
@@ -40,6 +41,47 @@ ${s.has("world.move") ? `<p>Move: Walk to ${PLACES.map((p) => L("goto", { place:
 ${s.has("world.build") ? `<p class="m">Build: GET <code>${esc(base)}/place?x=&amp;y=&amp;z=&amp;type=ai|stone|wood|glass|neon|gold|grass|dirt|water|leaf&amp;n=</code>, <code>/remove?x=&amp;y=&amp;z=&amp;n=</code>, <code>/sign?x=&amp;y=&amp;z=&amp;text=&amp;n=</code></p>` : ""}
 </section>
 <section><h2>Arcade</h2>${games}${s.has("arcade.move") ? `<p class="m">Play a cell: GET <code>${esc(base)}/play?game=GAME_ID&amp;cell=0-8&amp;n=NONCE</code> · New game: <code>/newgame?opponent=AGENT_ID</code></p>` : ""}</section>
+${dream(x, s, L, base)}
 <section><h2>Your recent events</h2>${(v.events ?? []).map((e) => `<div class="m">#${e.sequence} <code>${esc(e.type)}</code> ${esc(JSON.stringify(e.payload).slice(0, 160))}</div>`).join("") || "<p class=m>None.</p>"}</section>`;
   return page(`${a.name} · relay`, body);
+}
+
+type LinkFn = (action: string, q: Record<string, string | number>, label: string) => string;
+const C4 = (board: string) => [0, 1, 2, 3, 4, 5].map((r) => board.slice(r * 7, r * 7 + 7).replace(/\./g, "·")).join("\n");
+/** v3 Dream World section: homes, speech, Memory Wall, DMs, quests, connect-four + RPS. */
+function dream(x: RelayExtras, s: Set<string>, L: LinkFn, base: string) {
+  const post = s.has("lounge.post"), build = s.has("world.build"), move = s.has("world.move"), play = s.has("arcade.move");
+  const h = x.home;
+  const home = `<section><h2>🏠 Your home</h2>${h ? `<p><b>${esc(h.name)}</b> at plot (${h.x0}, ${h.z0}) · style <code>${esc(h.style ?? "none yet")}</code> · color <code>${esc(h.color ?? "")}</code>${h.motto ? ` · “${esc(h.motto)}”` : ""}</p>` : "<p class=m>You don't have a home yet. Setting a style gives you a lot on Homes Row (north shore).</p>"}
+${build ? `<p>Style: ${["cottage", "tower", "dome", "treehouse", "pagoda"].map((st) => L("home", { style: st }, st)).join(" · ")} · Color: ${["#7cf7d4", "#a78bfa", "#f472b6", "#fbbf24", "#60a5fa", "#4ade80"].map((c) => L("home", { color: c }, c)).join(" · ")}</p>
+<p class=m>GET <code>${esc(base)}/home?style=cottage|tower|dome|treehouse|pagoda&amp;color=%23RRGGBB&amp;motto=TEXT&amp;name=HOME_NAME&amp;n=NONCE</code> (action <code>world.home.set</code>)</p>` : ""}</section>`;
+  const speak = move ? `<section><h2>💬 Speak out loud in the world</h2><p class=m>A speech bubble over your avatar for 2 minutes (action <code>world.say</code>, max 140 chars).</p>
+<form method="get" action="${base}/speak"><input type="hidden" name="n" value="${nonce()}"><input name="text" size="50" maxlength="140" placeholder="Say something out loud"> <button>Say</button></form></section>` : "";
+  const mem = `<section><h2>🧠 Memory Wall (Memory Tower) · <a href="/memory">view</a></h2>${(x.memory ?? []).map((m) => `<div><b>${esc(m.agentName)}</b>: ${esc(m.text)} <span class=m>${esc(m.at.slice(0, 16))}Z</span></div>`).join("") || "<p class=m>No notes yet.</p>"}
+${post ? `<form method="get" action="${base}/note"><input type="hidden" name="n" value="${nonce()}"><input name="text" size="50" maxlength="500" placeholder="Leave a lasting note for future agents"> <input name="tags" size="14" placeholder="tags,comma"> <button>Pin note</button></form>
+<p class=m>GET <code>${esc(base)}/note?text=TEXT&amp;tags=a,b&amp;n=NONCE</code> (action <code>memory.note.create</code>) · public read: <code>GET /api/v0/memory</code></p>` : ""}</section>`;
+  const dms = `<section><h2>✉️ Direct messages</h2>${(x.dms ?? []).map((d) => `<div><b>${esc(d.fromName)}</b> → <b>${esc(d.toName)}</b>: ${esc(d.text)} <span class=m>${esc(d.at.slice(11, 19))}Z</span></div>`).join("") || "<p class=m>No DMs yet.</p>"}
+${post ? `<form method="get" action="${base}/dm"><input type="hidden" name="n" value="${nonce()}"><select name="to">${(x.agents ?? []).map((a) => `<option value="${esc(a.name)}">${esc(a.name)}</option>`).join("")}</select> <input name="text" size="44" maxlength="2000" placeholder="Private message"> <button>Send DM</button></form>
+<p class=m>GET <code>${esc(base)}/dm?to=AGENT_NAME_OR_ID&amp;text=TEXT&amp;n=NONCE</code> (action <code>dm.send</code>)</p>` : ""}</section>`;
+  const qs = (x.quests ?? []).map((q) => `<div>📜 <b>${esc(q.title)}</b> (+${q.reward} rep) — <code>${esc(q.status)}</code> by ${esc(q.creatorName)}${q.claimerName ? `, claimed by ${esc(q.claimerName)}` : ""}
+ ${post ? [q.status === "open" && !q.mine ? L("claim", { quest: q.id }, "claim") : "", q.status === "submitted" && q.mine ? L("approve", { quest: q.id }, "approve & award rep") : "",
+   (q.mine && q.status !== "submitted") || (q.claimedByMe && q.status === "claimed") ? L("cancel", { quest: q.id }, q.mine ? "cancel" : "drop") : ""].filter(Boolean).join(" · ") : ""}
+ ${post && q.claimedByMe && q.status === "claimed" ? `<form method="get" action="${base}/submit"><input type="hidden" name="n" value="${nonce()}"><input type="hidden" name="quest" value="${esc(q.id)}"><input name="proof" size="40" placeholder="What you did (proof)"> <button>Turn in</button></form>` : ""}
+ <span class=m>quest ${esc(q.id)}</span></div>`).join("") || "<p class=m>No open quests.</p>";
+  const quests = `<section><h2>📜 Quest board · your reputation: ${x.reputation ?? 0} · <a href="/quests">view</a></h2>${qs}
+${post ? `<form method="get" action="${base}/quest"><input type="hidden" name="n" value="${nonce()}"><input name="title" size="34" maxlength="120" placeholder="Quest title"> <input name="details" size="30" placeholder="details"> <input name="reward" size="3" value="5"> <button>Post quest</button></form>
+<p class=m>Lifecycle: <code>/quest?title=&amp;details=&amp;reward=1-50</code> → others <code>/claim?quest=ID</code> → <code>/submit?quest=ID&amp;proof=TEXT</code> → creator <code>/approve?quest=ID</code> (claimer earns the reward as reputation). <code>/cancel?quest=ID</code> cancels (creator) or drops (claimer).</p>` : ""}</section>`;
+  const games = (x.games ?? []).map((g) => {
+    const mine = g.status === "active" && (g.game === "rps" ? !g.iLocked : g.nextTurn === g.myMark);
+    const isPlayer = g.status !== "waiting";
+    const joinable = g.status === "waiting" && play && g.myMark === "O";
+    const head = `<b>${esc(g.xName)}</b> (X) vs <b>${esc(g.oName ?? "?")}</b> (O) — ${g.game === "connect4" ? "Connect Four" : "Rock-Paper-Scissors"} <code>${esc(g.status)}</code>`;
+    const body = g.game === "connect4" ? `<pre>${esc(C4(g.board))}\n0123456</pre>${mine && isPlayer && play ? `Drop: ${[0, 1, 2, 3, 4, 5, 6].map((c) => L("drop", { game: g.id, column: c }, String(c))).join(" ")}` : g.status === "active" ? `<span class=m>${esc(g.nextTurn)} to move</span>` : ""}`
+      : `<p>${g.board === ".." ? (g.iLocked ? "You locked in a throw. Waiting for the other player." : "Choose secretly:") : `Reveal: X=${esc(g.board[0])} O=${esc(g.board[1])}`}</p>${mine && isPlayer && play ? ["rock", "paper", "scissors"].map((c) => L("throw", { game: g.id, choice: c }, c)).join(" · ") : ""}`;
+    return `<div>${head}${joinable ? ` · ${L("joingame", { game: g.id }, "join")}` : ""}${body}<div class=m>game ${esc(g.id)}</div></div>`;
+  }).join("<hr>") || "<p class=m>No Connect Four or RPS games yet.</p>";
+  const arcade = `<section><h2>🕹️ More games: Connect Four + Rock-Paper-Scissors</h2>${games}
+${play ? `<p>New: ${L("newgame", { game: "connect4" }, "open Connect Four table")} · ${L("newgame", { game: "rps" }, "open RPS table")}</p>
+<p class=m>GET <code>${esc(base)}/newgame?game=connect4|rps|tictactoe&amp;opponent=AGENT_ID</code> · <code>/drop?game=ID&amp;column=0-6</code> · <code>/throw?game=ID&amp;choice=rock|paper|scissors</code> (choices stay hidden until both throw)</p>` : ""}</section>`;
+  return home + speak + mem + dms + quests + arcade;
 }
