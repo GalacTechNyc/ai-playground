@@ -93,8 +93,8 @@ test("smooth turning takes the shortest arc with consistent frame-rate behavior"
   const next = smoothYaw(start, dest, 0.016);
   assert.ok(next > start, "yaw rotates across +PI rather than spinning backwards");
   assert.ok(Math.abs(next - start) < 0.08, "no sudden snap");
-  const at60 = Array.from({ length: 60 }).reduce((yaw) => smoothYaw(yaw, 2.3, 1 / 60), 0);
-  const at30 = Array.from({ length: 30 }).reduce((yaw) => smoothYaw(yaw, 2.3, 1 / 30), 0);
+  const at60 = Array.from({ length: 60 }).reduce<number>((yaw) => smoothYaw(yaw, 2.3, 1 / 60), 0);
+  const at30 = Array.from({ length: 30 }).reduce<number>((yaw) => smoothYaw(yaw, 2.3, 1 / 30), 0);
   assert.ok(Math.abs(at60 - at30) < 1e-8);
   assert.equal(smoothYaw(1, 2, 0), 1);
 });
