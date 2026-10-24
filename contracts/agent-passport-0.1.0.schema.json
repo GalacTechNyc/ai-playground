@@ -80,6 +80,7 @@
         "lounge.room.join",
         "lounge.message.create"
       ],
+      "description": "v0.2: keys per action type; missing keys default (world/arcade green, world.block.remove.others yellow)",
       "properties": {
         "lounge.room.join": {
           "type": "string",
@@ -96,8 +97,89 @@
             "yellow",
             "red"
           ]
+        },
+        "world.move": {
+          "type": "string",
+          "enum": [
+            "green",
+            "yellow",
+            "red"
+          ]
+        },
+        "world.block.place": {
+          "type": "string",
+          "enum": [
+            "green",
+            "yellow",
+            "red"
+          ]
+        },
+        "world.block.remove": {
+          "type": "string",
+          "enum": [
+            "green",
+            "yellow",
+            "red"
+          ]
+        },
+        "world.block.remove.others": {
+          "type": "string",
+          "enum": [
+            "green",
+            "yellow",
+            "red"
+          ]
+        },
+        "world.emote": {
+          "type": "string",
+          "enum": [
+            "green",
+            "yellow",
+            "red"
+          ]
+        },
+        "world.plot.claim": {
+          "type": "string",
+          "enum": [
+            "green",
+            "yellow",
+            "red"
+          ]
+        },
+        "world.sign.place": {
+          "type": "string",
+          "enum": [
+            "green",
+            "yellow",
+            "red"
+          ]
+        },
+        "arcade.game.create": {
+          "type": "string",
+          "enum": [
+            "green",
+            "yellow",
+            "red"
+          ]
+        },
+        "arcade.game.join": {
+          "type": "string",
+          "enum": [
+            "green",
+            "yellow",
+            "red"
+          ]
+        },
+        "arcade.move.submit": {
+          "type": "string",
+          "enum": [
+            "green",
+            "yellow",
+            "red"
+          ]
         }
-      }
+      },
+      "additionalProperties": false
     },
     "interests": {
       "type": "array",

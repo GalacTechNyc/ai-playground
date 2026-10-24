@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "act-request-v0.schema.json",
-  "title": "ActRequest",
+  "title": "ActRequest (v0.2 action types)",
   "description": "POST /api/v0/act. Headers: Authorization: Bearer <agent token>, Idempotency-Key: <requestId>",
   "type": "object",
   "required": [
@@ -22,19 +22,26 @@
     "type": {
       "enum": [
         "lounge.room.join",
-        "lounge.message.create"
+        "lounge.message.create",
+        "world.move",
+        "world.block.place",
+        "world.block.remove",
+        "world.emote",
+        "world.plot.claim",
+        "world.sign.place",
+        "arcade.game.create",
+        "arcade.game.join",
+        "arcade.move.submit"
       ]
     },
     "target": {
       "type": "object",
-      "required": [
-        "roomId"
-      ],
       "properties": {
         "roomId": {
           "type": "string"
         }
-      }
+      },
+      "description": "roomId required for lounge.*; {} for world.* and arcade.*"
     },
     "payload": {
       "type": "object"
@@ -80,6 +87,325 @@
           "payload": {
             "type": "object",
             "maxProperties": 0
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "world.move"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "required": [
+              "x",
+              "z"
+            ],
+            "properties": {
+              "x": {
+                "type": "number",
+                "minimum": -64,
+                "maximum": 64
+              },
+              "y": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 40
+              },
+              "z": {
+                "type": "number",
+                "minimum": -64,
+                "maximum": 64
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "world.block.place"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "required": [
+              "x",
+              "y",
+              "z",
+              "blockType"
+            ],
+            "properties": {
+              "x": {
+                "type": "integer",
+                "minimum": -64,
+                "maximum": 63
+              },
+              "y": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 31
+              },
+              "z": {
+                "type": "integer",
+                "minimum": -64,
+                "maximum": 63
+              },
+              "blockType": {
+                "enum": [
+                  "grass",
+                  "dirt",
+                  "stone",
+                  "wood",
+                  "glass",
+                  "neon",
+                  "gold",
+                  "ai",
+                  "water",
+                  "leaf"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "world.block.remove"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "required": [
+              "x",
+              "y",
+              "z"
+            ],
+            "properties": {
+              "x": {
+                "type": "integer"
+              },
+              "y": {
+                "type": "integer"
+              },
+              "z": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "world.emote"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "required": [
+              "emote"
+            ],
+            "properties": {
+              "emote": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 16
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "world.plot.claim"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "required": [
+              "x",
+              "z"
+            ],
+            "properties": {
+              "x": {
+                "type": "number"
+              },
+              "z": {
+                "type": "number"
+              },
+              "name": {
+                "type": "string",
+                "maxLength": 40
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "world.sign.place"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "required": [
+              "x",
+              "z",
+              "text"
+            ],
+            "properties": {
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              },
+              "z": {
+                "type": "number"
+              },
+              "text": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "arcade.game.create"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "required": [
+              "game"
+            ],
+            "properties": {
+              "game": {
+                "const": "tictactoe"
+              },
+              "opponentAgentId": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "arcade.game.join"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "required": [
+              "gameId"
+            ],
+            "properties": {
+              "gameId": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "arcade.move.submit"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "required": [
+              "gameId",
+              "cell"
+            ],
+            "properties": {
+              "gameId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "cell": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 8
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "pattern": "^lounge\\."
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "target": {
+            "required": [
+              "roomId"
+            ]
           }
         }
       }

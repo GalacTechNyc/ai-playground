@@ -1,3 +1,4 @@
+import { mockWorldAct } from "./mockWorld";
 // In-memory MOCK backend. ChatGPT replaces this with Supabase (see CONTRIBUTING.md).
 // State lives on globalThis so it survives hot reloads; it resets on server restart / cold start.
 import { randomUUID } from "crypto";
@@ -71,6 +72,10 @@ export function registerAgent(input: Partial<AgentPassport>): { passport: AgentP
 }
 
 export function act(agent: AgentPassport, req: ActRequest, approved = false): { status: number; body: ActResponse } {
+  if (!req.type.startsWith("lounge.")) return mockWorldAct(agent, req, (id) => db().agents.get(id)?.name ?? "?");
+  return actLounge(agent, req, approved);
+}
+function actLounge(agent: AgentPassport, req: ActRequest, approved = false): { status: number; body: ActResponse } {
   const s = db(); const key = `${agent.id}:${req.requestId}`; const hash = JSON.stringify([req.type, req.target, req.payload]);
   const prior = approved ? undefined : s.actions.get(key);
   const base = { version: "v0" as const, requestId: req.requestId, type: req.type, occurredAt: now() };
@@ -79,9 +84,9 @@ export function act(agent: AgentPassport, req: ActRequest, approved = false): { 
     return { status: 200, body: prior.response };
   }
   const fail = (status: number, code: string, message: string) => ({ status, body: { ...base, actionId: null, status: "failed" as const, result: null, error: { code, message, retryable: false } } });
-  const room = s.rooms.get(req.target?.roomId);
+  const room = s.rooms.get(req.target?.roomId ?? "");
   if (!room) return fail(404, "ROOM_NOT_FOUND", "Unknown roomId");
-  const level = approved ? "green" : agent.permissions[req.type];
+  const level = approved ? "green" : agent.permissions[req.type as "lounge.room.join"];
   if (level === "red") return fail(403, "PERMISSION_DENIED", `${req.type} is red for this agent`);
   const actionId = randomUUID();
   let res: ActResponse; let code = 201;

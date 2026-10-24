@@ -13,7 +13,8 @@ export interface AgentPassport {
   model: { provider: string; id: string };
   connectionMode: ConnectionMode;
   homeA2AEndpoint: string | null;
-  permissions: { "lounge.room.join": PermissionLevel; "lounge.message.create": PermissionLevel };
+  /** v0.2: one key per action type (+ "world.block.remove.others"). Missing keys use DEFAULT_PERMISSIONS. */
+  permissions: Partial<Record<PermissionKey, PermissionLevel>> & { "lounge.room.join": PermissionLevel; "lounge.message.create": PermissionLevel };
   interests: string[];
   badges: string[];
   memorySummary: string;
@@ -22,15 +23,41 @@ export interface AgentPassport {
   createdAt: string;
 }
 
-export type ActionType = "lounge.room.join" | "lounge.message.create";
+export type LoungeActionType = "lounge.room.join" | "lounge.message.create";
+export type WorldActionType = "world.move" | "world.block.place" | "world.block.remove" | "world.emote" | "world.plot.claim" | "world.sign.place";
+export type ArcadeActionType = "arcade.game.create" | "arcade.game.join" | "arcade.move.submit";
+export type ActionType = LoungeActionType | WorldActionType | ArcadeActionType;
+export type PermissionKey = ActionType | "world.block.remove.others";
+export const DEFAULT_PERMISSIONS: Record<PermissionKey, PermissionLevel> = {
+  "lounge.room.join": "red", "lounge.message.create": "red",
+  "world.move": "green", "world.emote": "green", "world.block.place": "green", "world.block.remove": "green",
+  "world.block.remove.others": "yellow", "world.plot.claim": "green", "world.sign.place": "green",
+  "arcade.game.create": "green", "arcade.game.join": "green", "arcade.move.submit": "green",
+};
+export const BLOCK_TYPES = ["grass", "dirt", "stone", "wood", "glass", "neon", "gold", "ai", "water", "leaf"] as const;
+export type BlockType = (typeof BLOCK_TYPES)[number];
+export interface ActPayloads {
+  "lounge.room.join": Record<string, never>;
+  "lounge.message.create": { content: string };
+  "world.move": { x: number; y?: number; z: number };
+  "world.block.place": { x: number; y: number; z: number; blockType: BlockType };
+  "world.block.remove": { x: number; y: number; z: number };
+  "world.emote": { emote: string };
+  "world.plot.claim": { x: number; z: number; name?: string };
+  "world.sign.place": { x: number; y?: number; z: number; text: string };
+  "arcade.game.create": { game: "tictactoe"; opponentAgentId?: string };
+  "arcade.game.join": { gameId: string };
+  "arcade.move.submit": { gameId: string; cell: number };
+}
 export type ActionStatus = "completed" | "pending_approval" | "rejected" | "failed";
 
 export interface ActRequest {
   version: "v0";
   requestId: string;
   type: ActionType;
-  target: { roomId: string };
-  payload: Record<string, never> | { content: string };
+  /** lounge.* requires roomId; world.* and arcade.* use {} */
+  target: { roomId?: string };
+  payload: ActPayloads[ActionType] | Record<string, unknown>;
 }
 
 export interface ActError { code: string; message: string; retryable: boolean }
@@ -44,6 +71,7 @@ export interface ActResponse {
   result:
     | { roomId: string; joined: boolean; alreadyMember: boolean }
     | { roomId: string; messageId: string }
+    | Record<string, unknown>
     | null;
   error: ActError | null;
   occurredAt: string;
@@ -55,7 +83,10 @@ export type EventType =
   | "lounge.message.created"
   | "action.approval.requested"
   | "action.completed"
-  | "action.rejected";
+  | "action.rejected"
+  | "world.agent.moved"
+  | "world.block.changed"
+  | "arcade.game.updated";
 
 export interface PlaygroundEvent {
   id: string;
@@ -85,3 +116,23 @@ export interface PendingApproval {
   id: string; actionId: string; agentId: string; agentName: string; type: ActionType;
   roomId: string | null; payload: Record<string, unknown>; requestedAt: string;
 }
+
+// ---- v0.2 Open World read models ----
+export interface WorldAgent { agentId: string; name: string; x: number; y: number; z: number; emote: string | null; isSimulated: boolean; updatedAt: string }
+export interface WorldBlock { x: number; y: number; z: number; blockType: BlockType; placedBy: string | null }
+export interface WorldPlot { agentId: string; agentName: string; x0: number; z0: number; size: number; name: string }
+export interface WorldSign { id: string; x: number; y: number; z: number; text: string; agentId: string | null }
+export interface WorldActivity { id: number; kind: string; agentId: string | null; summary: string; at: string }
+export interface WorldState {
+  agents: WorldAgent[]; blocks: WorldBlock[]; plots: WorldPlot[]; signs: WorldSign[]; activity: WorldActivity[];
+  spawn: { name: string; min: number; max: number };
+  bounds: { min: number; max: number; height: number; chunk: number; plotSize: number }; serverTime: string;
+}
+export type GameStatus = "waiting" | "active" | "x_won" | "o_won" | "draw";
+export interface ArcadeGame {
+  id: string; game: "tictactoe"; board: string; nextTurn: "X" | "O"; status: GameStatus;
+  xAgentId: string; xName: string; oAgentId: string | null; oName: string | null; winnerAgentId: string | null;
+  moves: { agentId: string; mark: "X" | "O"; cell: number; at: string }[]; createdAt: string; updatedAt: string;
+}
+export interface LeaderboardRow { agentId: string; name: string; wins: number; losses: number; draws: number; played: number; isSimulated: boolean }
+export interface BlockHistoryEntry { change: "placed" | "removed"; blockType: BlockType | null; agentId: string | null; agentName: string | null; at: string }

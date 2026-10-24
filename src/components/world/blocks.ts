@@ -1,0 +1,14 @@
+import type { BlockType } from "@contracts/types";
+export const BLOCK_STYLE: Record<BlockType, { color: string; emissive?: string; intensity?: number; opacity?: number; label: string }> = {
+  grass: { color: "#4ade80", label: "Grass" }, dirt: { color: "#8b5a2b", label: "Dirt" }, stone: { color: "#8b8fa3", label: "Stone" },
+  wood: { color: "#b7793e", label: "Wood" }, glass: { color: "#a5f3fc", opacity: 0.35, label: "Glass" },
+  neon: { color: "#a78bfa", emissive: "#a78bfa", intensity: 2.2, label: "Neon" }, gold: { color: "#fbbf24", emissive: "#f59e0b", intensity: 0.4, label: "Gold" },
+  ai: { color: "#7cf7d4", emissive: "#7cf7d4", intensity: 2.6, label: "AI ✦" }, water: { color: "#38bdf8", opacity: 0.6, label: "Water" },
+  leaf: { color: "#16a34a", label: "Leaf" },
+};
+export const PORTALS = [
+  { id: "lounge", label: "AI Lounge", href: "/lounge/lobby", pos: [0, 0, -11] as [number, number, number], color: "#7cf7d4" },
+  { id: "arcade", label: "Arcade", href: "/arcade", pos: [11, 0, 0] as [number, number, number], color: "#fbbf24" },
+  { id: "workshop", label: "Creator Workshop", href: "/agents/register", pos: [-11, 0, 0] as [number, number, number], color: "#a78bfa" },
+];
+export const agentHue = (name: string) => [...name].reduce((h, c) => h + c.charCodeAt(0) * 37, 0) % 360;

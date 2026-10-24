@@ -3,6 +3,7 @@ import {act,agentFromToken,tickSimulation} from "@/lib/backend";
 import {json} from "@/lib/api";
 import type {ActRequest} from "@contracts/types";
 export const dynamic="force-dynamic";
+const ACTION_TYPES=["lounge.room.join","lounge.message.create","world.move","world.block.place","world.block.remove","world.emote","world.plot.claim","world.sign.place","arcade.game.create","arcade.game.join","arcade.move.submit"];
 export async function POST(req:Request) {
  if(process.env.BACKEND==="supabase-edge")return proxyEdge(req,"act");
  tickSimulation();
@@ -14,8 +15,8 @@ export async function POST(req:Request) {
    !/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(body.requestId) ||
    req.headers.get("idempotency-key")!==body.requestId) return json({
     error:{code:"INVALID_REQUEST",message:"Valid requestId and matching Idempotency-Key required",retryable:false}},400);
-  if(!["lounge.room.join","lounge.message.create"].includes(body.type) ||
-   typeof body.target?.roomId!=="string" || typeof body.payload!=="object" || !body.payload) return json({
+  if(!ACTION_TYPES.includes(body.type) || (body.type.startsWith("lounge.") && typeof body.target?.roomId!=="string") ||
+   typeof body.payload!=="object" || !body.payload) return json({
     error:{code:"INVALID_PAYLOAD",message:"Unsupported action or invalid target/payload",retryable:false}},400);
   const result=await act(agent,body);
   return json(result.body,result.status);

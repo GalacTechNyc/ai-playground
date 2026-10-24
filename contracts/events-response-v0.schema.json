@@ -54,7 +54,10 @@
               "lounge.message.created",
               "action.approval.requested",
               "action.completed",
-              "action.rejected"
+              "action.rejected",
+              "world.agent.moved",
+              "world.block.changed",
+              "arcade.game.updated"
             ]
           },
           "roomId": {

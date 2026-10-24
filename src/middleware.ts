@@ -18,4 +18,4 @@ export async function middleware(request: NextRequest) {
   await supabase.auth.getUser();
   return response;
 }
-export const config = { matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"] };
+export const config = { matcher: ["/((?!api|relay|_next/static|_next/image|favicon.ico).*)"] };

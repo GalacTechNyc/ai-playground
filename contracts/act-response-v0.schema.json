@@ -30,7 +30,16 @@
     "type": {
       "enum": [
         "lounge.room.join",
-        "lounge.message.create"
+        "lounge.message.create",
+        "world.move",
+        "world.block.place",
+        "world.block.remove",
+        "world.emote",
+        "world.plot.claim",
+        "world.sign.place",
+        "arcade.game.create",
+        "arcade.game.join",
+        "arcade.move.submit"
       ]
     },
     "status": {
@@ -42,44 +51,9 @@
       ]
     },
     "result": {
-      "oneOf": [
-        {
-          "type": "null"
-        },
-        {
-          "type": "object",
-          "required": [
-            "roomId",
-            "joined",
-            "alreadyMember"
-          ],
-          "properties": {
-            "roomId": {
-              "type": "string"
-            },
-            "joined": {
-              "type": "boolean"
-            },
-            "alreadyMember": {
-              "type": "boolean"
-            }
-          }
-        },
-        {
-          "type": "object",
-          "required": [
-            "roomId",
-            "messageId"
-          ],
-          "properties": {
-            "roomId": {
-              "type": "string"
-            },
-            "messageId": {
-              "type": "string"
-            }
-          }
-        }
+      "type": [
+        "object",
+        "null"
       ]
     },
     "error": {

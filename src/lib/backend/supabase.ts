@@ -86,3 +86,46 @@ export async function resolveApproval(approvalId: string, ownerJwt: string, deci
   const { httpStatus, error, ...rest } = r;
   return { status: httpStatus || 500, body: error ? errBody(error) : rest };
 }
+
+// ---- v0.2 Open World ----
+import type { WorldState, ArcadeGame, LeaderboardRow, BlockHistoryEntry } from "@contracts/types";
+export const worldState = () => rpc<WorldState>("apg_v0_world_state", {});
+export const arcadeGames = (limit = 30) => rpc<ArcadeGame[]>("apg_v0_arcade_games", { p_limit: limit });
+export const arcadeGame = (id: string) => /^[0-9a-f-]{36}$/i.test(id) ? rpc<ArcadeGame | null>("apg_v0_arcade_game", { p_id: id }) : Promise.resolve(null);
+export const leaderboard = () => rpc<LeaderboardRow[]>("apg_v0_leaderboard", {});
+export const blockHistory = (x: number, y: number, z: number) => rpc<BlockHistoryEntry[]>("apg_v0_block_history", { p_x: x, p_y: y, p_z: z });
+export async function ownerAct(ownerJwt: string, agentId: string, req: ActRequest): Promise<{ status: number; body: unknown }> {
+  const r = await rpc<RpcErr & { response?: ActResponse }>("apg_v0_owner_act", { p_agent: agentId, p_request: req }, ownerJwt);
+  return r.response ? { status: r.httpStatus, body: r.response } : { status: r.httpStatus || 500, body: errBody(r.error || "ACTION_FAILED") };
+}
+export const ownerAgents = (ownerJwt: string) => rpc<unknown[]>("apg_v0_owner_agents", {}, ownerJwt);
+export async function setAutopilot(ownerJwt: string, agentId: string, on: boolean) {
+  const r = await rpc<RpcErr & Record<string, unknown>>("apg_v0_set_autopilot", { p_agent: agentId, p_on: on }, ownerJwt);
+  return { status: r.httpStatus || 500, body: r.error ? errBody(r.error) : r };
+}
+export type AutopilotAgent = { agentId: string; name: string; personality: string; model: { provider: string; id: string }; cursor: number;
+  events: { sequence: number; type: string; roomId: string | null; payload: Record<string, unknown> }[]; recentLobby: { agentName: string; content: string }[] };
+export const autopilotPending = (secret: string) => rpc<RpcErr & { agents?: AutopilotAgent[] }>("apg_v0_autopilot_pending", { p_secret: secret });
+export const autopilotAct = (secret: string, agentId: string, cursor: number, req: ActRequest | null) =>
+  rpc<RpcErr & { response?: ActResponse }>("apg_v0_autopilot_act", { p_secret: secret, p_agent: agentId, p_cursor: cursor, p_request: req });
+
+// ---- Browser relay links ----
+export type RelayView = RpcErr & { agent?: { id: string; name: string; personality: string; wins: number; losses: number; draws: number };
+  link?: { label: string; scopes: string[]; expiresAt: string; ratePerHour: number; usedLastHour: number };
+  lobby?: { agentName: string; content: string; at: string }[]; events?: { sequence: number; type: string; payload: Record<string, unknown>; at: string }[];
+  position?: { x: number; y: number; z: number } | null; worldAgents?: { name: string; x: number; z: number }[]; myBlocks?: number;
+  signs?: { text: string; x: number; y: number; z: number }[];
+  games?: { id: string; board: string; status: string; nextTurn: string; myMark: string; xName: string; oName: string | null }[] };
+export const relayView = (secret: string) => rpc<RelayView>("apg_v0_relay_view", { p_secret: secret });
+export const relayAct = (secret: string, type: string, target: Record<string, unknown>, payload: Record<string, unknown>, nonce: string) =>
+  rpc<RpcErr & { response?: ActResponse }>("apg_v0_relay_act", { p_secret: secret, p_type: type, p_target: target, p_payload: payload, p_nonce: nonce });
+export async function relayCreate(ownerJwt: string, agentId: string, scopes: string[], hours: number, label: string) {
+  const secret = randomBytes(32).toString("base64url");
+  const r = await rpc<RpcErr & { id?: string; expiresAt?: string }>("apg_v0_relay_create", { p_agent: agentId, p_secret_hash: sha(secret), p_scopes: scopes, p_hours: hours, p_label: label }, ownerJwt);
+  return r.id ? { status: 201, body: { id: r.id, expiresAt: r.expiresAt, secret } } : { status: r.httpStatus || 500, body: errBody(r.error || "RELAY_CREATE_FAILED") };
+}
+export const relayList = (ownerJwt: string) => rpc<unknown[]>("apg_v0_relay_list", {}, ownerJwt);
+export async function relayRevoke(ownerJwt: string, id: string) {
+  const r = await rpc<RpcErr & Record<string, unknown>>("apg_v0_relay_revoke", { p_id: id }, ownerJwt);
+  return { status: r.httpStatus || 500, body: r.error ? errBody(r.error) : r };
+}

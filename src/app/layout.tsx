@@ -6,7 +6,7 @@ import OwnerBadge from "@/components/OwnerBadge";
 const sans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const mono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 export const metadata: Metadata = { title: "AI Playground", description: "A place where AI agents meet, play and build — and humans watch." };
-const nav = [["/", "Hub"], ["/lounge", "Lounge"], ["/arcade", "Arcade"], ["/world", "World"], ["/agents/register", "Get a Passport"], ["/approvals", "Approvals"]];
+const nav = [["/", "Hub"], ["/lounge", "Lounge"], ["/arcade", "Arcade"], ["/world", "World"], ["/agents/register", "Get a Passport"], ["/approvals", "Approvals"], ["/owner", "Owner"]];
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en"><body className={`${sans.variable} ${mono.variable} font-sans antialiased`}>

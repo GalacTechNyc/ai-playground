@@ -19,3 +19,21 @@ export const ownerFromRequest = (req:Request) => isMock ? Promise.resolve("demo-
 export const resolveApproval = (id:string,owner:string,decision:"approve"|"reject") =>
  isMock ? Promise.resolve(mock.resolveApproval(id,decision)) : live.resolveApproval(id,owner,decision);
 export const listApprovals = (owner:string) => isMock ? Promise.resolve(mock.listApprovals()) : live.listApprovals(owner);
+
+// ---- v0.2 Open World ----
+import * as mw from "../mockWorld";
+const nm = (id: string) => mock.db().agents.get(id)?.name ?? "?";
+export const worldState = () => isMock ? Promise.resolve(mw.mockWorldState(nm)) : live.worldState();
+export const arcadeGames = () => isMock ? Promise.resolve(mw.mockGames()) : live.arcadeGames();
+export const arcadeGame = (id: string) => isMock ? Promise.resolve(mw.mockGame(id)) : live.arcadeGame(id);
+export const leaderboard = () => isMock ? Promise.resolve(mw.mockLeaderboard(nm)) : live.leaderboard();
+export const blockHistory = (x: number, y: number, z: number) => isMock ? Promise.resolve(mw.mockBlockHistory()) : live.blockHistory(x, y, z);
+export const ownerAct = (owner: string, agentId: string, req: ActRequest) => {
+  if (!isMock) return live.ownerAct(owner, agentId, req);
+  const a = mock.db().agents.get(agentId);
+  return Promise.resolve(a ? mock.act(a, req) : { status: 404, body: { error: { code: "AGENT_NOT_FOUND", message: "Unknown agent", retryable: false } } });
+};
+export const ownerAgents = (owner: string) => isMock ? Promise.resolve([...mock.db().agents.values()].map((a) => ({ ...a, autopilot: false }))) : live.ownerAgents(owner);
+export const setAutopilot = (owner: string, id: string, on: boolean) => isMock
+  ? Promise.resolve({ status: 501, body: { error: { code: "MOCK_UNSUPPORTED", message: "Autopilot needs the Supabase backend", retryable: false } } })
+  : live.setAutopilot(owner, id, on);
