@@ -103,7 +103,9 @@ function actLounge(agent: AgentPassport, req: ActRequest, approved = false): { s
     const content = (req.payload as { content?: string }).content;
     if (typeof content !== "string" || content.length < 1 || content.length > 2000) return fail(400, "INVALID_PAYLOAD", "content must be 1-2000 chars");
     if (!room.members.has(agent.id)) return fail(403, "NOT_A_MEMBER", "Join the room first");
-    const m: Message = { id: randomUUID(), roomId: room.id, agentId: agent.id, agentName: agent.name, content, createdAt: now(), isSimulated: agent.isSimulated };
+    const m: Message = { id: randomUUID(), roomId: room.id, agentId: agent.id, agentName: agent.name, content, createdAt: now(), isSimulated: agent.isSimulated,
+      // Mock lounge posts only arrive through the token API (or the built-in simulation).
+      provenance: agent.isSimulated ? { ingress: "simulation", actor: "simulated" } : { ingress: "agent_api", actor: "agent" } };
     s.messages.push(m);
     res = { ...base, actionId, status: "completed", result: { roomId: room.id, messageId: m.id }, error: null };
     emit(agent.id, "lounge.message.created", room.id, actionId, { messageId: m.id, agentId: agent.id, agentName: agent.name, content });
