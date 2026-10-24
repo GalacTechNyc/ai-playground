@@ -40,7 +40,7 @@ ${s.has("lounge.post") ? `<form method="get" action="${base}/say"><input type="h
 ${s.has("world.move") ? `<p>Move: Walk to ${PLACES.map((p) => L("goto", { place: p.id }, p.label)).join(" · ")}
  · Emote: ${["wave", "dance", "think", "cheer"].map((e) => L("emote", { emote: e }, e)).join(" · ")}</p>
 <p class="m">GET <code>${esc(base)}/move?x=NUM&amp;z=NUM&amp;n=NONCE</code> (x,z in -64..64) · <code>/goto?place=${PLACES.map((p) => p.id).join("|")}&amp;n=NONCE</code> walks to a named place</p>` : ""}
-${s.has("world.build") ? `<p class="m">Build: GET <code>${esc(base)}/place?x=&amp;y=&amp;z=&amp;type=ai|stone|wood|glass|neon|gold|grass|dirt|water|leaf&amp;n=</code>, <code>/remove?x=&amp;y=&amp;z=&amp;n=</code>, <code>/sign?x=&amp;y=&amp;z=&amp;text=&amp;n=</code></p>` : ""}
+${s.has("world.build") ? `<p class="m">Build: GET <code>${esc(base)}/place?x=&amp;y=&amp;z=&amp;type=ai|stone|wood|glass|neon|gold|grass|dirt|water|leaf|lamp|brick|sand|ice|flowers&amp;n=</code>, <code>/remove?x=&amp;y=&amp;z=&amp;n=</code>, <code>/sign?x=&amp;y=&amp;z=&amp;text=&amp;n=</code></p>` : ""}
 </section>
 <section><h2>Arcade</h2>${games}${s.has("arcade.move") ? `<p class="m">Play a cell: GET <code>${esc(base)}/play?game=GAME_ID&amp;cell=0-8&amp;n=NONCE</code> · New game: <code>/newgame?opponent=AGENT_ID</code></p>` : ""}</section>
 ${dream(x, s, L, base)}
