@@ -19,7 +19,7 @@ import Lake from "./Lake";
 import { boat, clampToLake, inLake, onDock, DOCK } from "./lake";
 import Accessory from "./Accessories";
 import { hearing, heardText, type Hearing } from "./proximity";
-import { gait, hop, outfitFor, walkIntensity } from "./outfits";
+import { gait, hop, outfitFor, walkIntensity, smoothYaw, jumpPhase } from "./outfits";
 import type { PortalStation } from "@/lib/world/traversal";
 
 const PORTAL_STATIONS: PortalStation[] = PORTALS.map((p) => ({ id: p.id, label: p.label, href: p.href, color: p.color, radius: 3.2, position: { x: p.pos[0], y: 0, z: p.pos[2] } }));
@@ -45,28 +45,30 @@ function BlockLayer({ type, blocks, onPick }: { type: BlockType; blocks: WorldBl
 }
 
 const SPEED = 4.5;
-function Blocky({ color, walk, emote, t, pants = "#1e293b", children }: { color: THREE.Color | string; walk: number; emote: string | null; t: number; pants?: string; children?: ReactNode }) {
+function Blocky({ color, walk, emote, t, jump = 0, pants = "#1e293b", children }: { color: THREE.Color | string; walk: number; emote: string | null; t: number; jump?: -1 | 0 | 1; pants?: string; children?: ReactNode }) {
   const gt = gait(walk);
   const sw = Math.sin(t * gt.freq) * gt.amp;
+  const airborneArms = jump > 0 ? -0.95 : jump < 0 ? -0.35 : 0;
+  const airborneLegs = jump > 0 ? 0.42 : jump < 0 ? -0.15 : 0;
   const wave = emote === "wave" ? -2.6 + Math.sin(t * 8) * 0.4 : emote === "cheer" ? -2.9 : 0;
   const skin = "#ffd7b0";
-  return (<group rotation-x={gt.lean}>
+  return (<group rotation-x={gt.lean + (jump > 0 ? -0.12 : jump < 0 ? 0.08 : 0)}>
     <mesh position={[0, 1.35, 0]} castShadow><boxGeometry args={[0.8, 0.9, 0.42]} /><meshStandardMaterial color={color} /></mesh>
     <mesh position={[0, 2.1, 0]} castShadow><boxGeometry args={[0.56, 0.56, 0.56]} /><meshStandardMaterial color={skin} /></mesh>
     <mesh position={[0.13, 2.15, 0.29]}><boxGeometry args={[0.08, 0.1, 0.02]} /><meshBasicMaterial color="#111" /></mesh>
     <mesh position={[-0.13, 2.15, 0.29]}><boxGeometry args={[0.08, 0.1, 0.02]} /><meshBasicMaterial color="#111" /></mesh>
-    <group position={[0.52, 1.75, 0]} rotation-x={emote ? 0 : sw} rotation-z={wave ? -wave * 0.35 : 0}><mesh position={[0, -0.4, 0]} castShadow><boxGeometry args={[0.24, 0.8, 0.24]} /><meshStandardMaterial color={skin} /></mesh></group>
-    <group position={[-0.52, 1.75, 0]} rotation-x={-sw} rotation-z={emote === "cheer" ? 1 : 0}><mesh position={[0, -0.4, 0]} castShadow><boxGeometry args={[0.24, 0.8, 0.24]} /><meshStandardMaterial color={skin} /></mesh></group>
-    <group position={[0.2, 0.9, 0]} rotation-x={-sw}><mesh position={[0, -0.45, 0]} castShadow><boxGeometry args={[0.3, 0.9, 0.3]} /><meshStandardMaterial color={pants} /></mesh></group>
-    <group position={[-0.2, 0.9, 0]} rotation-x={sw}><mesh position={[0, -0.45, 0]} castShadow><boxGeometry args={[0.3, 0.9, 0.3]} /><meshStandardMaterial color={pants} /></mesh></group>
+    <group position={[0.52, 1.75, 0]} rotation-x={jump ? airborneArms : emote ? 0 : sw} rotation-z={wave ? -wave * 0.35 : 0}><mesh position={[0, -0.4, 0]} castShadow><boxGeometry args={[0.24, 0.8, 0.24]} /><meshStandardMaterial color={skin} /></mesh></group>
+    <group position={[-0.52, 1.75, 0]} rotation-x={jump ? airborneArms : -sw} rotation-z={emote === "cheer" ? 1 : 0}><mesh position={[0, -0.4, 0]} castShadow><boxGeometry args={[0.24, 0.8, 0.24]} /><meshStandardMaterial color={skin} /></mesh></group>
+    <group position={[0.2, 0.9, 0]} rotation-x={jump ? airborneLegs : -sw}><mesh position={[0, -0.45, 0]} castShadow><boxGeometry args={[0.3, 0.9, 0.3]} /><meshStandardMaterial color={pants} /></mesh></group>
+    <group position={[-0.2, 0.9, 0]} rotation-x={jump ? -airborneLegs : sw}><mesh position={[0, -0.45, 0]} castShadow><boxGeometry args={[0.3, 0.9, 0.3]} /><meshStandardMaterial color={pants} /></mesh></group>
     {children}
   </group>);
 }
 
-function Avatar({ a, bubble, low = false }: { a: WorldAgent; bubble?: string; low?: boolean }) {
+function Avatar({ a, bubble, low = false, badges }: { a: WorldAgent; bubble?: string; low?: boolean; badges?: readonly string[] }) {
   const g = useRef<THREE.Group>(null); const body = useRef<THREE.Group>(null);
   const [anim, setAnim] = useState({ walk: 0, t: 0 });
-  const outfit = useMemo(() => outfitFor(a.name, a.agentId), [a.name, a.agentId]);
+  const outfit = useMemo(() => outfitFor(a.name, a.agentId, badges), [a.name, a.agentId, badges]);
   const color = useMemo(() => new THREE.Color(`hsl(${agentHue(a.name)}, 80%, 58%)`), [a.name]);
   const emote = a.emote && Date.now() - Date.parse(a.updatedAt) < 20000 ? a.emote : null;
   // Walk target: the server position (anchor) or, when idle there, a nearby wander spot.
@@ -92,7 +94,7 @@ function Avatar({ a, bubble, low = false }: { a: WorldAgent; bubble?: string; lo
     if (d > 0.05) {
       const speed = travelling ? Math.max(SPEED, d / 10) : 1.6; // long trips finish in ~10s; idle ambling is slow
       const step = Math.min(d, speed * dt); o.position.x += (dx / d) * step; o.position.z += (dz / d) * step;
-      const want = Math.atan2(dx, dz); let dr = want - o.rotation.y; dr = Math.atan2(Math.sin(dr), Math.cos(dr)); o.rotation.y += dr * Math.min(1, dt * 10);
+      const want = Math.atan2(dx, dz); o.rotation.y = smoothYaw(o.rotation.y, want, dt, 11);
       walk = walkIntensity(speed, SPEED, travelling); w.idleUntil = Math.max(w.idleUntil, now + 2);
     }
     // Arrival hop: a long trip just ended at the server destination.
@@ -127,7 +129,7 @@ function Avatar({ a, bubble, low = false }: { a: WorldAgent; bubble?: string; lo
 
 function Player({ building }: { building: boolean }) {
   const g = useRef<THREE.Group>(null); const vel = useRef({ vy: 0, y: 0, vx: 0, vz: 0 });
-  const [anim, setAnim] = useState({ walk: 0, t: 0 });
+  const [anim, setAnim] = useState({ walk: 0, t: 0, jump: 0 as -1 | 0 | 1 });
   const { camera, controls } = useThree() as unknown as { camera: THREE.Camera; controls: { target: THREE.Vector3; update: () => void } | null };
   const keys = useRef(new Set<string>());
   useEffect(() => {
@@ -156,7 +158,7 @@ function Player({ building }: { building: boolean }) {
       if (mv.lengthSq() > 0.0001) { const b = clampToLake(boat.x + mv.x * speed * 0.8, boat.z + mv.z * speed * 0.8); boat.x = b.x; boat.z = b.z; boat.rot = Math.atan2(mv.x, mv.z); o.rotation.y = boat.rot; }
       o.position.set(boat.x, 0.35 + Math.sin(s.clock.elapsedTime * 1.6) * 0.05, boat.z); v.y = 0; v.vy = 0; input.jump = false;
     } else {
-    if (mv.lengthSq() > 0.0001) { o.position.addScaledVector(mv, speed); o.rotation.y = Math.atan2(mv.x, mv.z); }
+    if (mv.lengthSq() > 0.0001) { o.position.addScaledVector(mv, speed); o.rotation.y = smoothYaw(o.rotation.y, Math.atan2(mv.x, mv.z), dt, 14); }
     const r = Math.hypot(o.position.x, o.position.z); if (r > ISLAND_R - 1) o.position.multiplyScalar((ISLAND_R - 1) / r);
     const floor = onDock(o.position.x, o.position.z) ? DOCK.top : 0;
     if (v.y <= floor + 0.001 && (k.has("Space") || input.jump)) { v.vy = swimming ? 7 : 9; input.jump = false; }
@@ -171,10 +173,12 @@ function Player({ building }: { building: boolean }) {
     camera.position.add(delta);
     if (controls) { controls.target.set(o.position.x, o.position.y + 1.6, o.position.z); }
     const walk = mv.lengthSq() > 0.0001 && !boat.riding && v.y <= 0.401 ? (k.has("ShiftLeft") || input.run ? 1.5 : 1) : 0; const t = s.clock.elapsedTime;
-    if (walk !== anim.walk || Math.floor(t * 30) !== Math.floor(anim.t * 30)) setAnim({ walk, t });
+    const floorHere = onDock(o.position.x, o.position.z) ? DOCK.top : 0;
+    const jump = boat.riding || swimming ? 0 : jumpPhase(v.y - floorHere, v.vy);
+    if (walk !== anim.walk || jump !== anim.jump || Math.floor(t * 30) !== Math.floor(anim.t * 30)) setAnim({ walk, jump, t });
   });
   return (<group ref={g} position={[0, 0, 8]}>
-    <Blocky color={color} walk={anim.walk} emote={null} t={anim.t} />
+    <Blocky color={color} walk={anim.walk} jump={anim.jump} emote={null} t={anim.t} />
     <Billboard position={[0, 2.75, 0]}><Text fontSize={0.34} color="#7cf7d4" outlineWidth={0.04} outlineColor="#0b1020" anchorY="bottom">{building ? "You (builder)" : "You"}</Text></Billboard>
   </group>);
 }
@@ -229,8 +233,8 @@ function stackedSigns(signs: WorldSign[]) {
 
 export type Quality = "high" | "low";
 
-export default function Scene({ state, onIntent, onNavigate, building, bloom, bubbles, quality = "high" }: {
-  quality?: Quality; bubbles?: Record<string, string>; state: WorldState | null; onIntent: (i: BuildIntent) => void; onNavigate: (href: string) => void; building: boolean; bloom: boolean;
+export default function Scene({ state, onIntent, onNavigate, building, bloom, bubbles, avatarBadges, quality = "high" }: {
+  quality?: Quality; bubbles?: Record<string, string>; avatarBadges?: Record<string, readonly string[]>; state: WorldState | null; onIntent: (i: BuildIntent) => void; onNavigate: (href: string) => void; building: boolean; bloom: boolean;
 }) {
   const byType = useMemo(() => {
     const m = new Map<BlockType, WorldBlock[]>(); for (const b of state?.blocks ?? []) { if (!m.has(b.blockType)) m.set(b.blockType, []); m.get(b.blockType)!.push(b); } return m;
@@ -273,7 +277,7 @@ export default function Scene({ state, onIntent, onNavigate, building, bloom, bu
       {PORTALS.map((p) => <Portal key={p.id} p={p} onEnter={onNavigate} />)}
       <TraversalKit playerPosition={player.pos} enabled={!building} showPortals={false} portals={PORTAL_STATIONS}
         onLaunch={(_, impulse) => { player.impulse = { ...impulse }; }} onEnterPortal={(portal) => onNavigate(portal.href)} />
-      {(state?.agents ?? []).map((a) => <Avatar key={a.agentId} a={a} low={low} bubble={a.say || bubbles?.[a.agentId]} />)}
+      {(state?.agents ?? []).map((a) => <Avatar key={a.agentId} a={a} low={low} badges={avatarBadges?.[a.agentId]} bubble={a.say || bubbles?.[a.agentId]} />)}
       <OrbitControls makeDefault enableDamping maxPolarAngle={Math.PI / 2.05} minDistance={3} maxDistance={70} target={[0, 1.6, 8]} enablePan={false} />
       {bloom && !low && !hover && (
         <EffectComposer multisampling={0}>
