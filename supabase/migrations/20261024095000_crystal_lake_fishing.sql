@@ -138,7 +138,7 @@ CREATE FUNCTION public.apg_v0_lake_fishing()
 RETURNS jsonb LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$
  SELECT jsonb_build_object(
   'leaderboard', coalesce((
-    SELECT jsonb_agg(to_jsonb(t) ORDER BY t.total_catches DESC,t.legendary DESC,t.rare DESC,t.name)
+    SELECT jsonb_agg(to_jsonb(t) ORDER BY t."totalCatches" DESC,t.legendary DESC,t.rare DESC,t.name)
     FROM (
       SELECT a.id AS "agentId", a.name, COUNT(*)::int AS "totalCatches",
         COUNT(*) FILTER (WHERE c.rarity='rare')::int AS rare,
