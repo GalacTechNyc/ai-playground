@@ -6,14 +6,32 @@ import { BLOCK_TYPES, type BlockHistoryEntry, type BlockType, type WorldState } 
 import { useOwner } from "@/lib/useOwner";
 import { BLOCK_STYLE, PORTALS, agentHue } from "./blocks";
 import type { BuildIntent } from "./Scene";
+import { input } from "./controls";
+import { PLACES } from "@/lib/places";
 
 const Scene = dynamic(() => import("./Scene"), { ssr: false, loading: () => <div className="grid h-full place-items-center font-mono text-sm text-zinc-500">Loading world…</div> });
+
+function Joystick() {
+  const [knob, setKnob] = useState<{ x: number; y: number } | null>(null);
+  const move = (e: React.TouchEvent<HTMLDivElement>) => { const r = e.currentTarget.getBoundingClientRect(); const t = e.touches[0]; if (!t) return;
+    let x = (t.clientX - r.left - r.width / 2) / (r.width / 2), y = (t.clientY - r.top - r.height / 2) / (r.height / 2); const m = Math.hypot(x, y); if (m > 1) { x /= m; y /= m; }
+    input.x = x; input.z = -y; input.run = m > 0.9; setKnob({ x, y }); };
+  const end = () => { input.x = 0; input.z = 0; input.run = false; setKnob(null); };
+  return (<>
+    <div className="absolute bottom-48 left-6 h-28 w-28 touch-none rounded-full border border-white/30 bg-white/10 md:hidden" onTouchStart={move} onTouchMove={move} onTouchEnd={end} onTouchCancel={end}>
+      <div className="absolute h-12 w-12 rounded-full bg-white/60" style={{ left: `calc(50% - 24px + ${(knob?.x ?? 0) * 32}px)`, top: `calc(50% - 24px + ${(knob?.y ?? 0) * 32}px)` }} /></div>
+    <button className="absolute bottom-52 right-6 h-16 w-16 touch-none rounded-full border border-white/30 bg-white/20 font-bold md:hidden" onTouchStart={() => { input.jump = true; }}>JUMP</button>
+  </>);
+}
 
 function MiniMap({ s }: { s: WorldState | null }) {
   const sz = 160, sc = sz / 128, P = (v: number) => (v + 64) * sc;
   return (
     <svg width={sz} height={sz} className="rounded-xl border border-line bg-ink/80">
-      <circle cx={P(0)} cy={P(0)} r={11.5 * sc} fill="#1b1830" stroke="#7cf7d4" strokeWidth={0.8} />
+      <circle cx={P(0)} cy={P(0)} r={50 * sc} fill="#3f9d4f" stroke="#f3dfa2" strokeWidth={2} />
+      <circle cx={P(0)} cy={P(0)} r={11.5 * sc} fill="#cbd5e1" stroke="#7cf7d4" strokeWidth={0.8} />
+      <circle cx={P(-18)} cy={P(26)} r={8 * sc} fill="#38bdf8" />
+      {PLACES.map((p) => <text key={p.id} x={P(p.x)} y={P(p.z)} fontSize={6} fill={p.color} textAnchor="middle">{p.id === "spawn" || p.id === "lookout" ? "" : p.label}</text>)}
       {s?.plots.map((p) => <rect key={p.agentId} x={P(p.x0)} y={P(p.z0)} width={8 * sc} height={8 * sc} fill={`hsl(${agentHue(p.agentName)},70%,55%)`} opacity={0.35} />)}
       {s?.blocks.map((b, i) => <rect key={i} x={P(b.x)} y={P(b.z)} width={Math.max(1, sc)} height={Math.max(1, sc)} fill={BLOCK_STYLE[b.blockType].color} />)}
       {PORTALS.map((p) => <circle key={p.id} cx={P(p.pos[0])} cy={P(p.pos[2])} r={2.5} fill={p.color} />)}
@@ -30,6 +48,15 @@ export default function WorldClient() {
   const [myAgents, setMyAgents] = useState<{ id: string; name: string }[]>([]); const [agentId, setAgentId] = useState("");
   const [toast, setToast] = useState(""); const [history, setHistory] = useState<{ at: string; rows: BlockHistoryEntry[] } | null>(null);
   const [bloom, setBloom] = useState(true);
+  const [bubbles, setBubbles] = useState<Record<string, string>>({});
+  useEffect(() => {
+    const pull = () => Promise.all(["lobby", "dev"].map((r) => fetch(`/api/v0/rooms/${r}/messages`, { cache: "no-store" }).then((x) => x.json()).catch(() => ({}))))
+      .then((rs) => { const latest: Record<string, { c: string; t: number }> = {};
+        for (const d of rs) for (const m of (d.messages ?? []) as { agentId: string; content: string; createdAt: string }[]) { const t = Date.parse(m.createdAt);
+          if (Date.now() - t < 120000 && (!latest[m.agentId] || latest[m.agentId].t < t)) latest[m.agentId] = { c: m.content, t }; }
+        setBubbles(Object.fromEntries(Object.entries(latest).map(([k, v]) => [k, v.c]))); });
+    pull(); const t = setInterval(pull, 4000); return () => clearInterval(t);
+  }, []);
   const load = useCallback(() => fetch("/api/v0/world", { cache: "no-store" }).then((r) => r.json()).then((d) => { if (d.error) setErr(d.error.message); else { setErr(""); setS(d); } }).catch(() => setErr("offline")), []);
   useEffect(() => { load(); const t = setInterval(load, 2000); return () => clearInterval(t); }, [load]);
   useEffect(() => {
@@ -58,12 +85,14 @@ export default function WorldClient() {
 
   return (
     <div className="fixed inset-x-0 bottom-0 top-[57px] z-10 overflow-hidden">
-      <Scene state={s} onIntent={onIntent} onNavigate={(h) => router.push(h)} building={building} bloom={bloom} />
+      <Scene state={s} onIntent={onIntent} onNavigate={(h) => router.push(h)} building={building} bloom={bloom} bubbles={bubbles} />
+      <Joystick />
       {/* HUD */}
       <div className="pointer-events-none absolute left-4 top-4 space-y-2">
         <div className="pointer-events-auto rounded-xl border border-line bg-ink/80 px-4 py-3 backdrop-blur">
-          <p className="font-mono text-[10px] uppercase tracking-[.3em] text-neon">Milestone 002 · Open World</p>
-          <h1 className="text-xl font-bold">Spawn Commons</h1>
+          <p className="font-mono text-[10px] uppercase tracking-[.3em] text-neon">World v2 · Playground Island</p>
+          <h1 className="text-xl font-bold">Playground Island</h1>
+          <p className="hidden text-[11px] text-zinc-400 md:block">WASD/arrows walk · Shift run · Space jump · drag to look · yellow pads launch you</p>
           <p className="font-mono text-xs text-zinc-400">{counts.agents} agents · {counts.blocks} blocks · live every 2s {err && <span className="text-rose">· {err}</span>}</p>
           <div className="mt-2 flex gap-2">
             <button onClick={() => setBuilding((b) => !b)} className={building ? "btn-primary !py-1 text-sm" : "btn-ghost !py-1 text-sm"}>{building ? "Building ✓" : "Builder mode"}</button>

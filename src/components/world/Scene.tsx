@@ -1,11 +1,14 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Canvas, useFrame, type ThreeEvent } from "@react-three/fiber";
+import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { Billboard, OrbitControls, Text, Sparkles, Stars } from "@react-three/drei";
 import { EffectComposer, Bloom, Vignette } from "@react-three/postprocessing";
 import * as THREE from "three";
 import type { BlockType, WorldAgent, WorldBlock, WorldState } from "@contracts/types";
 import { BLOCK_STYLE, PORTALS, agentHue } from "./blocks";
+import Island, { ISLAND_R } from "./Island";
+import { INTERACTABLES } from "./interactables";
+import { input } from "./controls";
 
 export type BuildIntent = { kind: "place"; x: number; y: number; z: number } | { kind: "remove"; x: number; y: number; z: number } | { kind: "inspect"; x: number; y: number; z: number };
 
@@ -27,28 +30,117 @@ function BlockLayer({ type, blocks, onPick }: { type: BlockType; blocks: WorldBl
   );
 }
 
-function Avatar({ a }: { a: WorldAgent }) {
-  const g = useRef<THREE.Group>(null); const target = useRef(new THREE.Vector3(a.x, a.y, a.z));
-  useEffect(() => { target.current.set(a.x, a.y, a.z); }, [a.x, a.y, a.z]);
-  const color = useMemo(() => new THREE.Color(`hsl(${agentHue(a.name)}, 85%, 62%)`), [a.name]);
+const SPEED = 4.5;
+function Blocky({ color, walk, emote, t }: { color: THREE.Color; walk: number; emote: string | null; t: number }) {
+  const sw = Math.sin(t * 10) * 0.7 * walk;
+  const wave = emote === "wave" ? -2.6 + Math.sin(t * 8) * 0.4 : emote === "cheer" ? -2.9 : 0;
+  const skin = "#ffd7b0";
+  return (<group>
+    <mesh position={[0, 1.35, 0]} castShadow><boxGeometry args={[0.8, 0.9, 0.42]} /><meshStandardMaterial color={color} /></mesh>
+    <mesh position={[0, 2.1, 0]} castShadow><boxGeometry args={[0.56, 0.56, 0.56]} /><meshStandardMaterial color={skin} /></mesh>
+    <mesh position={[0.13, 2.15, 0.29]}><boxGeometry args={[0.08, 0.1, 0.02]} /><meshBasicMaterial color="#111" /></mesh>
+    <mesh position={[-0.13, 2.15, 0.29]}><boxGeometry args={[0.08, 0.1, 0.02]} /><meshBasicMaterial color="#111" /></mesh>
+    <group position={[0.52, 1.75, 0]} rotation-x={emote ? 0 : sw} rotation-z={wave ? -wave * 0.35 : 0}><mesh position={[0, -0.4, 0]} castShadow><boxGeometry args={[0.24, 0.8, 0.24]} /><meshStandardMaterial color={skin} /></mesh></group>
+    <group position={[-0.52, 1.75, 0]} rotation-x={-sw} rotation-z={emote === "cheer" ? 1 : 0}><mesh position={[0, -0.4, 0]} castShadow><boxGeometry args={[0.24, 0.8, 0.24]} /><meshStandardMaterial color={skin} /></mesh></group>
+    <group position={[0.2, 0.9, 0]} rotation-x={-sw}><mesh position={[0, -0.45, 0]} castShadow><boxGeometry args={[0.3, 0.9, 0.3]} /><meshStandardMaterial color="#1e293b" /></mesh></group>
+    <group position={[-0.2, 0.9, 0]} rotation-x={sw}><mesh position={[0, -0.45, 0]} castShadow><boxGeometry args={[0.3, 0.9, 0.3]} /><meshStandardMaterial color="#1e293b" /></mesh></group>
+  </group>);
+}
+
+function Avatar({ a, bubble }: { a: WorldAgent; bubble?: string }) {
+  const g = useRef<THREE.Group>(null); const body = useRef<THREE.Group>(null);
+  const [anim, setAnim] = useState({ walk: 0, t: 0 });
+  const color = useMemo(() => new THREE.Color(`hsl(${agentHue(a.name)}, 80%, 58%)`), [a.name]);
+  const emote = a.emote && Date.now() - Date.parse(a.updatedAt) < 20000 ? a.emote : null;
   useFrame((s, dt) => {
     const o = g.current; if (!o) return;
-    o.position.lerp(target.current, 1 - Math.pow(0.02, dt));
-    o.position.y = target.current.y + 0.05 * Math.sin(s.clock.elapsedTime * 2 + a.name.length);
+    const dx = a.x - o.position.x, dz = a.z - o.position.z, d = Math.hypot(dx, dz);
+    let walk = 0;
+    if (d > 0.05) { const step = Math.min(d, SPEED * dt); o.position.x += (dx / d) * step; o.position.z += (dz / d) * step; o.rotation.y = Math.atan2(dx, dz); walk = 1; }
+    if (d > 30) { o.position.x = a.x; o.position.z = a.z; }
+    const t = s.clock.elapsedTime;
+    if (body.current) { body.current.position.y = emote === "cheer" ? Math.abs(Math.sin(t * 6)) * 0.6 : walk ? Math.abs(Math.sin(t * 10)) * 0.08 : Math.sin(t * 2) * 0.03;
+      body.current.rotation.y = emote === "dance" ? t * 4 : 0; }
+    if (Math.abs(walk - anim.walk) > 0.5 || Math.floor(t * 30) !== Math.floor(anim.t * 30)) setAnim({ walk, t });
   });
   return (
     <group ref={g} position={[a.x, a.y, a.z]}>
-      <mesh position={[0, 0.7, 0]} castShadow><capsuleGeometry args={[0.32, 0.6, 6, 16]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={1.4} toneMapped={false} /></mesh>
-      <mesh position={[0, 1.45, 0]}><sphereGeometry args={[0.26, 24, 24]} /><meshStandardMaterial color="#fff" emissive={color} emissiveIntensity={0.6} /></mesh>
-      <pointLight color={color} intensity={6} distance={6} position={[0, 1, 0]} />
-      <mesh rotation-x={-Math.PI / 2} position={[0, 0.02, 0]}><ringGeometry args={[0.5, 0.65, 32]} /><meshBasicMaterial color={color} transparent opacity={0.6} toneMapped={false} /></mesh>
-      <Billboard position={[0, 2.2, 0]}>
-        <Text fontSize={0.38} color="#fff" outlineWidth={0.03} outlineColor="#07060d" anchorY="bottom">{a.name}{a.isSimulated ? " (sim)" : ""}</Text>
-        {a.emote && <Text position={[0, 0.5, 0]} fontSize={0.34} color="#fbbf24" anchorY="bottom">✦ {a.emote}</Text>}
+      <group ref={body}><Blocky color={color} walk={anim.walk} emote={emote} t={anim.t} /></group>
+      <mesh rotation-x={-Math.PI / 2} position={[0, 0.05, 0]}><ringGeometry args={[0.55, 0.7, 32]} /><meshBasicMaterial color={color} transparent opacity={0.7} toneMapped={false} /></mesh>
+      <Billboard position={[0, 2.75, 0]}>
+        <Text fontSize={0.36} color="#fff" outlineWidth={0.04} outlineColor="#0b1020" anchorY="bottom">{a.name}{a.isSimulated ? " (sim)" : ""}</Text>
+        {emote && <Text position={[0, 0.45, 0]} fontSize={0.3} color="#fbbf24" anchorY="bottom">✦ {emote}</Text>}
+        {bubble && <group position={[0, emote ? 1.0 : 0.6, 0]}>
+          <Text fontSize={0.3} maxWidth={5} color="#0b1020" anchorY="bottom" textAlign="center">{bubble.length > 90 ? bubble.slice(0, 88) + "…" : bubble}
+</Text>
+          <mesh position={[0, 0.35, -0.02]}><planeGeometry args={[5.4, Math.ceil(Math.min(bubble.length, 90) / 22) * 0.4 + 0.3]} /><meshBasicMaterial color="#ffffff" transparent opacity={0.92} /></mesh>
+        </group>}
       </Billboard>
     </group>
   );
+}
+
+function Player({ building }: { building: boolean }) {
+  const g = useRef<THREE.Group>(null); const vel = useRef({ vy: 0, y: 0 });
+  const [anim, setAnim] = useState({ walk: 0, t: 0 });
+  const { camera, controls } = useThree() as unknown as { camera: THREE.Camera; controls: { target: THREE.Vector3; update: () => void } | null };
+  const keys = useRef(new Set<string>());
+  useEffect(() => {
+    const ok = (e: KeyboardEvent) => !(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement);
+    const dn = (e: KeyboardEvent) => { if (!ok(e)) return; keys.current.add(e.code); if (e.code === "Space") e.preventDefault(); };
+    const up = (e: KeyboardEvent) => keys.current.delete(e.code);
+    window.addEventListener("keydown", dn); window.addEventListener("keyup", up);
+    return () => { window.removeEventListener("keydown", dn); window.removeEventListener("keyup", up); };
+  }, []);
+  const color = useMemo(() => new THREE.Color("#f8fafc"), []);
+  useFrame((s, dt) => {
+    const o = g.current; if (!o) return; dt = Math.min(dt, 0.05);
+    const k = keys.current;
+    let ix = input.x + (k.has("KeyD") || k.has("ArrowRight") ? 1 : 0) - (k.has("KeyA") || k.has("ArrowLeft") ? 1 : 0);
+    let iz = input.z + (k.has("KeyW") || k.has("ArrowUp") ? 1 : 0) - (k.has("KeyS") || k.has("ArrowDown") ? 1 : 0);
+    const m = Math.hypot(ix, iz); if (m > 1) { ix /= m; iz /= m; }
+    const fwd = new THREE.Vector3(); camera.getWorldDirection(fwd); fwd.y = 0; fwd.normalize();
+    const right = new THREE.Vector3(-fwd.z, 0, fwd.x);
+    const speed = (k.has("ShiftLeft") || input.run ? 10 : 6) * dt;
+    const before = o.position.clone();
+    const mv = fwd.multiplyScalar(iz).add(right.multiplyScalar(ix));
+    if (mv.lengthSq() > 0.0001) { o.position.addScaledVector(mv, speed); o.rotation.y = Math.atan2(mv.x, mv.z); }
+    const r = Math.hypot(o.position.x, o.position.z); if (r > ISLAND_R - 1) o.position.multiplyScalar((ISLAND_R - 1) / r);
+    const v = vel.current;
+    if (v.y <= 0.001 && (k.has("Space") || input.jump)) { v.vy = 9; input.jump = false; }
+    const pad = v.y <= 0.001 ? INTERACTABLES.find((i) => i.kind === "jumpPad" && Math.hypot(o.position.x - i.x, o.position.z - i.z) < i.radius) : undefined; if (pad) v.vy = pad.launch;
+    v.vy -= 25 * dt; v.y = Math.max(0, v.y + v.vy * dt); if (v.y === 0) v.vy = Math.max(v.vy, 0);
+    o.position.y = v.y;
+    const delta = o.position.clone().sub(before);
+    camera.position.add(delta);
+    if (controls) { controls.target.set(o.position.x, o.position.y + 1.6, o.position.z); }
+    const walk = mv.lengthSq() > 0.0001 && v.y === 0 ? 1 : 0; const t = s.clock.elapsedTime;
+    if (walk !== anim.walk || Math.floor(t * 30) !== Math.floor(anim.t * 30)) setAnim({ walk, t });
+  });
+  return (<group ref={g} position={[0, 0, 8]}>
+    <Blocky color={color} walk={anim.walk} emote={null} t={anim.t} />
+    <Billboard position={[0, 2.75, 0]}><Text fontSize={0.34} color="#7cf7d4" outlineWidth={0.04} outlineColor="#0b1020" anchorY="bottom">{building ? "You (builder)" : "You"}</Text></Billboard>
+  </group>);
+}
+
+function DayNight() {
+  const sun = useRef<THREE.DirectionalLight>(null); const hemi = useRef<THREE.HemisphereLight>(null);
+  const { scene } = useThree();
+  const day = useMemo(() => new THREE.Color("#8fd3ff"), []), dusk = useMemo(() => new THREE.Color("#f59e8b"), []), night = useMemo(() => new THREE.Color("#0b1030"), []);
+  const c = useMemo(() => new THREE.Color(), []);
+  useFrame(() => {
+    const ph = ((Date.now() / 1000) % 300) / 300; // 5-minute day
+    const ang = ph * Math.PI * 2, h = Math.sin(ang);
+    if (h > 0.25) c.copy(day); else if (h > -0.1) c.copy(night).lerp(dusk, (h + 0.1) / 0.35).lerp(day, Math.max(0, (h - 0.05) / 0.2)); else c.copy(night);
+    if (!(scene.background instanceof THREE.Color)) scene.background = new THREE.Color(); (scene.background as THREE.Color).copy(c);
+    if (scene.fog) (scene.fog as THREE.Fog).color.copy(c);
+    if (sun.current) { sun.current.position.set(Math.cos(ang) * 50, Math.max(5, h * 60), 20); sun.current.intensity = Math.max(0.15, h * 2.4); }
+    if (hemi.current) hemi.current.intensity = 0.35 + Math.max(0, h) * 0.8;
+  });
+  return (<>
+    <hemisphereLight ref={hemi} args={["#dbeafe", "#3f6212", 0.9]} />
+    <directionalLight ref={sun} position={[30, 50, 20]} intensity={2} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-60} shadow-camera-right={60} shadow-camera-top={60} shadow-camera-bottom={-60} shadow-camera-far={200} />
+  </>);
 }
 
 function Portal({ p, onEnter }: { p: (typeof PORTALS)[number]; onEnter: (href: string) => void }) {
@@ -68,25 +160,8 @@ function Portal({ p, onEnter }: { p: (typeof PORTALS)[number]; onEnter: (href: s
   );
 }
 
-function Ground({ onGround }: { onGround: (e: ThreeEvent<PointerEvent>) => void }) {
-  const tex = useMemo(() => {
-    const c = document.createElement("canvas"); c.width = c.height = 64; const x = c.getContext("2d")!;
-    x.fillStyle = "#0d1a16"; x.fillRect(0, 0, 64, 64); x.strokeStyle = "rgba(124,247,212,0.12)"; x.lineWidth = 2; x.strokeRect(0, 0, 64, 64);
-    const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(128, 128); t.magFilter = THREE.NearestFilter; return t;
-  }, []);
-  return (
-    <group>
-      <mesh rotation-x={-Math.PI / 2} receiveShadow onPointerDown={onGround}><planeGeometry args={[128, 128]} /><meshStandardMaterial map={tex} roughness={1} /></mesh>
-      {/* Spawn Commons plaza */}
-      <mesh rotation-x={-Math.PI / 2} position={[0, 0.01, 0]} receiveShadow><circleGeometry args={[11.5, 64]} /><meshStandardMaterial color="#1b1830" roughness={0.8} /></mesh>
-      <mesh rotation-x={-Math.PI / 2} position={[0, 0.02, 0]}><ringGeometry args={[11.3, 11.6, 96]} /><meshBasicMaterial color="#7cf7d4" toneMapped={false} /></mesh>
-      <Billboard position={[0, 0.6, 7.5]}><Text fontSize={0.6} color="#7cf7d4" outlineWidth={0.03} outlineColor="#07060d">SPAWN COMMONS</Text></Billboard>
-    </group>
-  );
-}
-
-export default function Scene({ state, onIntent, onNavigate, building, bloom }: {
-  state: WorldState | null; onIntent: (i: BuildIntent) => void; onNavigate: (href: string) => void; building: boolean; bloom: boolean;
+export default function Scene({ state, onIntent, onNavigate, building, bloom, bubbles }: {
+  bubbles?: Record<string, string>; state: WorldState | null; onIntent: (i: BuildIntent) => void; onNavigate: (href: string) => void; building: boolean; bloom: boolean;
 }) {
   const byType = useMemo(() => {
     const m = new Map<BlockType, WorldBlock[]>(); for (const b of state?.blocks ?? []) { if (!m.has(b.blockType)) m.set(b.blockType, []); m.get(b.blockType)!.push(b); } return m;
@@ -100,13 +175,12 @@ export default function Scene({ state, onIntent, onNavigate, building, bloom }: 
   };
   const pickGround = (e: ThreeEvent<PointerEvent>) => { if (!building || e.button !== 0) return; e.stopPropagation(); onIntent({ kind: "place", x: Math.floor(e.point.x), y: 0, z: Math.floor(e.point.z) }); };
   return (
-    <Canvas shadows dpr={[1, 1.75]} camera={{ position: [18, 16, 22], fov: 50 }} onContextMenu={(e) => e.preventDefault()} gl={{ antialias: true }}>
-      <color attach="background" args={["#07060d"]} />
-      <fog attach="fog" args={["#0b0920", 30, 95]} />
-      <Stars radius={120} depth={40} count={2500} factor={4} fade speed={0.5} />
-      <hemisphereLight args={["#b9a8ff", "#0d1a16", 0.55]} />
-      <directionalLight position={[20, 30, 10]} intensity={1.6} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-40} shadow-camera-right={40} shadow-camera-top={40} shadow-camera-bottom={-40} />
-      <Ground onGround={pickGround} />
+    <Canvas shadows dpr={[1, 1.75]} camera={{ position: [0, 7, 19], fov: 55 }} onContextMenu={(e) => e.preventDefault()} gl={{ antialias: true }}>
+      <fog attach="fog" args={["#8fd3ff", 60, 160]} />
+      <Stars radius={150} depth={40} count={1500} factor={4} fade speed={0.5} />
+      <DayNight />
+      <Island onGround={pickGround} />
+      <Player building={building} />
       {(state?.plots ?? []).map((p) => (
         <group key={p.agentId}>
           <mesh rotation-x={-Math.PI / 2} position={[p.x0 + 4, 0.015, p.z0 + 4]}><planeGeometry args={[8, 8]} /><meshBasicMaterial color={`hsl(${agentHue(p.agentName)},70%,55%)`} transparent opacity={0.12} /></mesh>
@@ -121,12 +195,12 @@ export default function Scene({ state, onIntent, onNavigate, building, bloom }: 
         </Billboard>
       ))}
       {PORTALS.map((p) => <Portal key={p.id} p={p} onEnter={onNavigate} />)}
-      {(state?.agents ?? []).map((a) => <Avatar key={a.agentId} a={a} />)}
-      <OrbitControls makeDefault enableDamping maxPolarAngle={Math.PI / 2.1} minDistance={4} maxDistance={90} target={[0, 1, 0]} />
+      {(state?.agents ?? []).map((a) => <Avatar key={a.agentId} a={a} bubble={bubbles?.[a.agentId]} />)}
+      <OrbitControls makeDefault enableDamping maxPolarAngle={Math.PI / 2.05} minDistance={3} maxDistance={70} target={[0, 1.6, 8]} enablePan={false} />
       {bloom && !hover && (
         <EffectComposer multisampling={0}>
-          <Bloom intensity={0.9} luminanceThreshold={0.6} luminanceSmoothing={0.2} mipmapBlur />
-          <Vignette eskil={false} offset={0.2} darkness={0.7} />
+          <Bloom intensity={0.6} luminanceThreshold={0.85} luminanceSmoothing={0.2} mipmapBlur />
+          <Vignette eskil={false} offset={0.3} darkness={0.4} />
         </EffectComposer>
       )}
     </Canvas>

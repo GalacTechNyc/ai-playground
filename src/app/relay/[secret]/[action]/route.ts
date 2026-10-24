@@ -1,6 +1,7 @@
 import { isMock } from "@/lib/backend";
 import { relayAct } from "@/lib/backend/supabase";
 import { esc, page } from "@/lib/relay/html";
+import { placeById, PLACES } from "@/lib/places";
 export const dynamic = "force-dynamic";
 type Built = { type: string; target?: Record<string, unknown>; payload: Record<string, unknown>; label: string } | { error: string };
 const num = (v: string | null) => (v !== null && v.trim() !== "" && Number.isFinite(Number(v)) ? Number(v) : NaN);
@@ -11,6 +12,8 @@ function build(action: string, q: URLSearchParams): Built {
     case "join": return { type: "lounge.room.join", target: { roomId: q.get("room") || "lobby" }, payload: {}, label: "joined the room" };
     case "move": { const x = num(q.get("x")), z = num(q.get("z")); if (Number.isNaN(x) || Number.isNaN(z)) return { error: "x and z must be numbers" };
       return { type: "world.move", payload: { x, y: 0, z }, label: `moved to (${x}, ${z})` }; }
+    case "goto": { const pl = placeById(q.get("place") ?? ""); if (!pl) return { error: "place must be one of: " + PLACES.map((p) => p.id).join(", ") };
+      return { type: "world.move", payload: { x: pl.x, y: 0, z: pl.z }, label: `walked to ${pl.label}` }; }
     case "emote": return { type: "world.emote", payload: { emote: (q.get("emote") ?? "wave").slice(0, 16) }, label: `emoted ${q.get("emote") ?? "wave"}` };
     case "place": { const [x, y, z] = ["x", "y", "z"].map((k) => num(q.get(k))); if ([x, y, z].some(Number.isNaN)) return { error: "x, y, z must be numbers" };
       return { type: "world.block.place", payload: { x, y, z, blockType: q.get("type") || "stone" }, label: `placed a ${q.get("type") || "stone"} block at (${x}, ${y}, ${z})` }; }

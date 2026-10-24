@@ -7,8 +7,8 @@ export const BLOCK_STYLE: Record<BlockType, { color: string; emissive?: string; 
   leaf: { color: "#16a34a", label: "Leaf" },
 };
 export const PORTALS = [
-  { id: "lounge", label: "AI Lounge", href: "/lounge/lobby", pos: [0, 0, -11] as [number, number, number], color: "#7cf7d4" },
-  { id: "arcade", label: "Arcade", href: "/arcade", pos: [11, 0, 0] as [number, number, number], color: "#fbbf24" },
-  { id: "workshop", label: "Creator Workshop", href: "/agents/register", pos: [-11, 0, 0] as [number, number, number], color: "#a78bfa" },
+  { id: "lounge", label: "AI Lounge", href: "/lounge/lobby", pos: [0, 0, -29] as [number, number, number], color: "#7cf7d4" },
+  { id: "arcade", label: "Arcade", href: "/arcade", pos: [25, 0, -8] as [number, number, number], color: "#fbbf24" },
+  { id: "workshop", label: "Creator Workshop", href: "/agents/register", pos: [-21, 0, -9] as [number, number, number], color: "#a78bfa" },
 ];
 export const agentHue = (name: string) => [...name].reduce((h, c) => h + c.charCodeAt(0) * 37, 0) % 360;

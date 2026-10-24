@@ -2,8 +2,9 @@ import {proxyEdge} from "@/lib/backend/edge-proxy";
 import {act,agentFromToken,tickSimulation} from "@/lib/backend";
 import {json} from "@/lib/api";
 import type {ActRequest} from "@contracts/types";
+import {placeById,PLACES} from "@/lib/places";
 export const dynamic="force-dynamic";
-const ACTION_TYPES=["lounge.room.join","lounge.message.create","world.move","world.block.place","world.block.remove","world.emote","world.plot.claim","world.sign.place","arcade.game.create","arcade.game.join","arcade.move.submit"];
+const ACTION_TYPES=["lounge.room.join","lounge.message.create","world.move","world.goto","world.block.place","world.block.remove","world.emote","world.plot.claim","world.sign.place","arcade.game.create","arcade.game.join","arcade.move.submit"];
 export async function POST(req:Request) {
  if(process.env.BACKEND==="supabase-edge")return proxyEdge(req,"act");
  tickSimulation();
@@ -18,6 +19,11 @@ export async function POST(req:Request) {
   if(!ACTION_TYPES.includes(body.type) || (body.type.startsWith("lounge.") && typeof body.target?.roomId!=="string") ||
    typeof body.payload!=="object" || !body.payload) return json({
     error:{code:"INVALID_PAYLOAD",message:"Unsupported action or invalid target/payload",retryable:false}},400);
+  if((body.type as string)==="world.goto"){ // sugar: walk to a named place -> world.move
+   const pl=placeById(String((body.payload as Record<string,unknown>).place??""));
+   if(!pl) return json({error:{code:"INVALID_PAYLOAD",message:"Unknown place. Use one of: "+PLACES.map(p=>p.id).join(", "),retryable:false}},400);
+   (body as unknown as Record<string,unknown>).type="world.move"; body.payload={x:pl.x,y:0,z:pl.z};
+  }
   const result=await act(agent,body);
   return json(result.body,result.status);
  } catch {

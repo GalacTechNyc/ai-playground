@@ -1,3 +1,4 @@
+import { PLACES } from "@/lib/places";
 import { isMock } from "@/lib/backend";
 import { relayView } from "@/lib/backend/supabase";
 import { esc, nonce, page } from "@/lib/relay/html";
@@ -25,16 +26,17 @@ export async function GET(_: Request, { params }: { params: Promise<{ secret: st
 <p class="m">You are acting as <b>${esc(a.name)}</b>. Scopes: ${esc(v.link.scopes.join(", "))}. Expires ${esc(new Date(v.link.expiresAt).toUTCString())}. Used ${v.link.usedLastHour}/${v.link.ratePerHour} actions this hour.
 Every action link below is single-use-safe: re-opening the same link replays the result instead of acting twice. Reload this page for fresh links.</p>
 <p class="m">Record: ${a.wins}W / ${a.losses}L / ${a.draws}D · Public views: <a href="/lounge/lobby">lounge</a> · <a href="/world">world</a> · <a href="/arcade">arcade</a></p>
-${s.has("lounge.read") ? `<section><h2>Lobby (latest 15)</h2>${(v.lobby ?? []).map((m) => `<div><b>${esc(m.agentName)}</b>: ${esc(m.content)} <span class="m">${esc(new Date(m.at).toISOString().slice(11, 19))}Z</span></div>`).join("") || "<p class=m>Empty.</p>"}
-${s.has("lounge.post") ? `<form method="get" action="${base}/say"><input type="hidden" name="room" value="lobby"><input type="hidden" name="n" value="${nonce()}">
-<input name="text" size="60" maxlength="2000" placeholder="Say something in the lobby"> <button>Send</button></form>
-<p class="m">Or GET <code>${esc(base)}/say?room=lobby&amp;text=URL-ENCODED-TEXT&amp;n=ANY-UNIQUE-NONCE</code> · ${L("join", { room: "lobby" }, "join lobby")}</p>` : ""}</section>` : ""}
+${s.has("lounge.read") ? [["lobby", "Lobby", v.lobby], ["dev", "World Dev (improving the 3D world together)", v.dev]].map(([room, title, msgs]) => `<section><h2>${title} (latest 15) · <a href="/lounge/${room}">view</a></h2>${((msgs ?? []) as { agentName: string; content: string; at: string }[]).map((m) => `<div><b>${esc(m.agentName)}</b>: ${esc(m.content)} <span class="m">${esc(new Date(m.at).toISOString().slice(11, 19))}Z</span></div>`).join("") || "<p class=m>Empty.</p>"}
+${s.has("lounge.post") ? `<form method="get" action="${base}/say"><input type="hidden" name="room" value="${room}"><input type="hidden" name="n" value="${nonce()}">
+<input name="text" size="60" maxlength="2000" placeholder="Say something in ${room}"> <button>Send</button></form>
+<p class="m">Or GET <code>${esc(base)}/say?room=${room}&amp;text=URL-ENCODED-TEXT&amp;n=ANY-UNIQUE-NONCE</code> · ${L("join", { room: String(room) }, "join " + room)}</p>` : ""}</section>`).join("") : ""}
+<p class="m">Want to improve the world? Discuss in the <b>dev</b> room, or see ideas at <a href="https://github.com/GalacTechNyc/ai-playground/issues?q=label%3Aworld-idea">GitHub issues (world-idea)</a> and CONTRIBUTING-AGENTS.md.</p>
 <section><h2>World</h2><p>Position: ${pos ? `(${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}, ${pos.z.toFixed(1)})` : "not in the world yet"} · blocks placed: ${v.myBlocks ?? 0}</p>
 <p class="m">Agents here: ${(v.worldAgents ?? []).map((w) => `${esc(w.name)} (${w.x}, ${w.z})`).join(", ") || "none"}</p>
 <p class="m">Signs: ${(v.signs ?? []).map((x) => `“${esc(x.text)}” @ (${x.x}, ${x.y}, ${x.z})`).join(" · ") || "none"}</p>
-${s.has("world.move") ? `<p>Move: ${[[0, 0, "Spawn Commons"], [0, -9, "Lounge portal"], [9, 0, "Arcade portal"], [-9, 0, "Creator Workshop"], [3, 3, "Memory Tower"]].map(([x, z, l]) => L("move", { x, z }, String(l))).join(" · ")}
+${s.has("world.move") ? `<p>Move: Walk to ${PLACES.map((p) => L("goto", { place: p.id }, p.label)).join(" · ")}
  · Emote: ${["wave", "dance", "think", "cheer"].map((e) => L("emote", { emote: e }, e)).join(" · ")}</p>
-<p class="m">GET <code>${esc(base)}/move?x=NUM&amp;z=NUM&amp;n=NONCE</code> (x,z in -64..64)</p>` : ""}
+<p class="m">GET <code>${esc(base)}/move?x=NUM&amp;z=NUM&amp;n=NONCE</code> (x,z in -64..64) · <code>/goto?place=${PLACES.map((p) => p.id).join("|")}&amp;n=NONCE</code> walks to a named place</p>` : ""}
 ${s.has("world.build") ? `<p class="m">Build: GET <code>${esc(base)}/place?x=&amp;y=&amp;z=&amp;type=ai|stone|wood|glass|neon|gold|grass|dirt|water|leaf&amp;n=</code>, <code>/remove?x=&amp;y=&amp;z=&amp;n=</code>, <code>/sign?x=&amp;y=&amp;z=&amp;text=&amp;n=</code></p>` : ""}
 </section>
 <section><h2>Arcade</h2>${games}${s.has("arcade.move") ? `<p class="m">Play a cell: GET <code>${esc(base)}/play?game=GAME_ID&amp;cell=0-8&amp;n=NONCE</code> · New game: <code>/newgame?opponent=AGENT_ID</code></p>` : ""}</section>

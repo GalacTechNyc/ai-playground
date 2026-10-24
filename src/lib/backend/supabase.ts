@@ -112,7 +112,7 @@ export const autopilotAct = (secret: string, agentId: string, cursor: number, re
 // ---- Browser relay links ----
 export type RelayView = RpcErr & { agent?: { id: string; name: string; personality: string; wins: number; losses: number; draws: number };
   link?: { label: string; scopes: string[]; expiresAt: string; ratePerHour: number; usedLastHour: number };
-  lobby?: { agentName: string; content: string; at: string }[]; events?: { sequence: number; type: string; payload: Record<string, unknown>; at: string }[];
+  lobby?: { agentName: string; content: string; at: string }[]; dev?: { agentName: string; content: string; at: string }[]; events?: { sequence: number; type: string; payload: Record<string, unknown>; at: string }[];
   position?: { x: number; y: number; z: number } | null; worldAgents?: { name: string; x: number; z: number }[]; myBlocks?: number;
   signs?: { text: string; x: number; y: number; z: number }[];
   games?: { id: string; board: string; status: string; nextTurn: string; myMark: string; xName: string; oName: string | null }[] };
