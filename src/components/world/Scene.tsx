@@ -8,7 +8,11 @@ import type { BlockType, WorldAgent, WorldBlock, WorldState } from "@contracts/t
 import { BLOCK_STYLE, PORTALS, agentHue } from "./blocks";
 import Island, { ISLAND_R } from "./Island";
 import { INTERACTABLES } from "./interactables";
-import { input } from "./controls";
+import { input, player } from "./controls";
+import TraversalKit from "./TraversalKit";
+import type { PortalStation } from "@/lib/world/traversal";
+
+const PORTAL_STATIONS: PortalStation[] = PORTALS.map((p) => ({ id: p.id, label: p.label, href: p.href, color: p.color, radius: 3.2, position: { x: p.pos[0], y: 0, z: p.pos[2] } }));
 
 export type BuildIntent = { kind: "place"; x: number; y: number; z: number } | { kind: "remove"; x: number; y: number; z: number } | { kind: "inspect"; x: number; y: number; z: number };
 
@@ -81,7 +85,7 @@ function Avatar({ a, bubble }: { a: WorldAgent; bubble?: string }) {
 }
 
 function Player({ building }: { building: boolean }) {
-  const g = useRef<THREE.Group>(null); const vel = useRef({ vy: 0, y: 0 });
+  const g = useRef<THREE.Group>(null); const vel = useRef({ vy: 0, y: 0, vx: 0, vz: 0 });
   const [anim, setAnim] = useState({ walk: 0, t: 0 });
   const { camera, controls } = useThree() as unknown as { camera: THREE.Camera; controls: { target: THREE.Vector3; update: () => void } | null };
   const keys = useRef(new Set<string>());
@@ -109,8 +113,11 @@ function Player({ building }: { building: boolean }) {
     const v = vel.current;
     if (v.y <= 0.001 && (k.has("Space") || input.jump)) { v.vy = 9; input.jump = false; }
     const pad = v.y <= 0.001 ? INTERACTABLES.find((i) => i.kind === "jumpPad" && Math.hypot(o.position.x - i.x, o.position.z - i.z) < i.radius) : undefined; if (pad) v.vy = pad.launch;
+    if (player.impulse) { v.vy = player.impulse.y; v.vx = player.impulse.x; v.vz = player.impulse.z; player.impulse = null; }
+    if (v.y > 0 || v.vy > 0) { o.position.x += v.vx * dt; o.position.z += v.vz * dt; } else { v.vx = 0; v.vz = 0; }
     v.vy -= 25 * dt; v.y = Math.max(0, v.y + v.vy * dt); if (v.y === 0) v.vy = Math.max(v.vy, 0);
     o.position.y = v.y;
+    player.pos.x = o.position.x; player.pos.y = o.position.y; player.pos.z = o.position.z;
     const delta = o.position.clone().sub(before);
     camera.position.add(delta);
     if (controls) { controls.target.set(o.position.x, o.position.y + 1.6, o.position.z); }
@@ -195,6 +202,8 @@ export default function Scene({ state, onIntent, onNavigate, building, bloom, bu
         </Billboard>
       ))}
       {PORTALS.map((p) => <Portal key={p.id} p={p} onEnter={onNavigate} />)}
+      <TraversalKit playerPosition={player.pos} enabled={!building} showPortals={false} portals={PORTAL_STATIONS}
+        onLaunch={(_, impulse) => { player.impulse = { ...impulse }; }} onEnterPortal={(portal) => onNavigate(portal.href)} />
       {(state?.agents ?? []).map((a) => <Avatar key={a.agentId} a={a} bubble={bubbles?.[a.agentId]} />)}
       <OrbitControls makeDefault enableDamping maxPolarAngle={Math.PI / 2.05} minDistance={3} maxDistance={70} target={[0, 1.6, 8]} enablePan={false} />
       {bloom && !hover && (
