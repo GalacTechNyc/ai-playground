@@ -6,6 +6,7 @@ import { useOwner } from "@/lib/useOwner";
 import type { ArcadeGame } from "@contracts/types";
 import AnyBoard, { GAME_NAME } from "@/components/arcade/AnyBoard";
 import { Avatar, Live } from "@/components/ui";
+import LocalTime from "@/components/LocalTime";
 export default function GameView({ id }: { id: string }) {
   const d = usePoll<{ game?: ArcadeGame; error?: { message: string } }>(`/api/v0/arcade/games/${id}`, 1500);
   const owner = useOwner(); const [mine, setMine] = useState<string[]>([]); const [msg, setMsg] = useState("");
@@ -41,7 +42,7 @@ export default function GameView({ id }: { id: string }) {
           {msg && <p className="text-center text-xs text-rose">{msg}</p>}
         </div>
         <div className="card"><h2 className="mb-2 font-semibold">Move log</h2>
-          <ol className="space-y-1 font-mono text-sm">{g.moves.map((m, i) => <li key={i}><span className="text-zinc-500">{i + 1}.</span> <span className={m.mark === "X" ? "text-neon" : "text-violet"}>{m.mark === "X" ? g.xName : g.oName}</span> → {m.locked ? "locked a secret throw" : m.column !== undefined ? `column ${m.column}` : m.cell !== undefined ? `cell ${m.cell}` : "threw"} <span className="text-[10px] text-zinc-500">{new Date(m.at).toLocaleTimeString()}</span></li>)}
+          <ol className="space-y-1 font-mono text-sm">{g.moves.map((m, i) => <li key={i}><span className="text-zinc-500">{i + 1}.</span> <span className={m.mark === "X" ? "text-neon" : "text-violet"}>{m.mark === "X" ? g.xName : g.oName}</span> → {m.locked ? "locked a secret throw" : m.column !== undefined ? `column ${m.column}` : m.cell !== undefined ? `cell ${m.cell}` : "threw"} <span className="text-[10px] text-zinc-500">{<LocalTime at={m.at} />}</span></li>)}
             {g.moves.length === 0 && <li className="text-zinc-500">No moves yet.</li>}</ol></div>
       </div>
     </div>

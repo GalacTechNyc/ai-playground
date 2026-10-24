@@ -9,6 +9,7 @@ import type { BuildIntent, Quality } from "./Scene";
 import SceneBoundary from "./SceneBoundary";
 import { input } from "./controls";
 import { PLACES } from "@/lib/places";
+import LocalTime from "@/components/LocalTime";
 
 const Scene = dynamic(() => import("./Scene"), { ssr: false, loading: () => <div className="grid h-full place-items-center font-mono text-sm text-zinc-500">Loading world…</div> });
 
@@ -134,7 +135,7 @@ export default function WorldClient() {
       <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between gap-4">
         <div className="max-h-40 w-full max-w-md overflow-hidden rounded-xl border border-line bg-ink/80 p-3 backdrop-blur">
           <div className="label mb-1 flex items-center gap-2"><span className="live-dot h-2 w-2 rounded-full bg-neon" />World activity</div>
-          <ul className="space-y-0.5 text-xs">{(s?.activity ?? []).slice(0, 7).map((a) => <li key={a.id} className="truncate text-zinc-300"><span className="font-mono text-[10px] text-zinc-500">{new Date(a.at).toLocaleTimeString()}</span> {a.summary}</li>)}
+          <ul className="space-y-0.5 text-xs">{(s?.activity ?? []).slice(0, 7).map((a) => <li key={a.id} className="truncate text-zinc-300"><span className="font-mono text-[10px] text-zinc-500">{<LocalTime at={a.at} />}</span> {a.summary}</li>)}
             {s && s.activity.length === 0 && <li className="text-zinc-500">Quiet… waiting for agents to arrive.</li>}</ul>
         </div>
         <div className="hidden gap-2 md:flex"><a href="/quests" className="rounded-lg border border-line bg-ink/80 px-3 py-1.5 text-xs text-neon">📜 Quests</a><a href="/memory" className="rounded-lg border border-line bg-ink/80 px-3 py-1.5 text-xs text-amber">🧠 Memory</a><a href="/timeline" className="rounded-lg border border-line bg-ink/80 px-3 py-1.5 text-xs text-zinc-300">● Live</a>{PORTALS.map((p) => <a key={p.id} href={p.href} className="rounded-lg border border-line bg-ink/80 px-3 py-1.5 text-xs" style={{ color: p.color }}>⬡ {p.label}</a>)}</div>
@@ -142,7 +143,7 @@ export default function WorldClient() {
       {history && (
         <div className="absolute right-4 top-48 w-64 rounded-xl border border-line bg-ink/90 p-3 text-xs backdrop-blur">
           <div className="flex justify-between"><span className="label">Block history · {history.at}</span><button onClick={() => setHistory(null)}>✕</button></div>
-          <ul className="mt-2 space-y-1">{history.rows.map((h, i) => <li key={i}><span className={h.change === "placed" ? "text-neon" : "text-rose"}>{h.change}</span> {h.blockType} by <b>{h.agentName ?? "?"}</b> <span className="text-zinc-500">{new Date(h.at).toLocaleString()}</span></li>)}
+          <ul className="mt-2 space-y-1">{history.rows.map((h, i) => <li key={i}><span className={h.change === "placed" ? "text-neon" : "text-rose"}>{h.change}</span> {h.blockType} by <b>{h.agentName ?? "?"}</b> <span className="text-zinc-500">{<LocalTime at={h.at} full />}</span></li>)}
             {history.rows.length === 0 && <li className="text-zinc-500">No history.</li>}</ul>
         </div>
       )}

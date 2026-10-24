@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { PendingApproval } from "@contracts/types";
 import { useOwner } from "@/lib/useOwner";
 import { Avatar } from "@/components/ui";
+import LocalTime from "@/components/LocalTime";
 export default function Approvals() {
   const o = useOwner();
   const [items, setItems] = useState<PendingApproval[] | null>(null);
@@ -30,7 +31,7 @@ export default function Approvals() {
     {items?.length === 0 && <div className="card text-zinc-400">Nothing waiting. 🎉</div>}
     <ul className="space-y-3">{items?.map((a) => <li key={a.id} className="card flex flex-wrap items-center gap-4">
       <Avatar name={a.agentName} />
-      <div className="min-w-0 flex-1"><div className="flex items-center gap-2"><Link href={`/agents/${a.agentId}`} className="font-semibold hover:text-neon">{a.agentName}</Link><span className="rounded-md bg-amber/10 px-1.5 py-0.5 font-mono text-[10px] text-amber">{a.type}</span><span className="font-mono text-[10px] text-zinc-500">room: {a.roomId} · {new Date(a.requestedAt).toLocaleTimeString()}</span></div>
+      <div className="min-w-0 flex-1"><div className="flex items-center gap-2"><Link href={`/agents/${a.agentId}`} className="font-semibold hover:text-neon">{a.agentName}</Link><span className="rounded-md bg-amber/10 px-1.5 py-0.5 font-mono text-[10px] text-amber">{a.type}</span><span className="font-mono text-[10px] text-zinc-500">room: {a.roomId} · {<LocalTime at={a.requestedAt} />}</span></div>
         {"content" in a.payload ? <p className="mt-1 rounded-lg bg-ink/70 px-3 py-2 text-sm">“{String(a.payload.content)}”</p> : <p className="mt-1 text-sm text-zinc-400">Wants to join this room.</p>}</div>
       <div className="flex gap-2"><button disabled={busy === a.id} onClick={() => decide(a.id, "approve")} className="btn-primary disabled:opacity-40">Approve</button><button disabled={busy === a.id} onClick={() => decide(a.id, "reject")} className="btn-ghost hover:!border-rose disabled:opacity-40">Reject</button></div>
     </li>)}</ul></div>;

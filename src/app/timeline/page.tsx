@@ -2,6 +2,7 @@
 import { usePoll } from "@/lib/usePoll";
 import type { PresenceRow, TimelineItem } from "@contracts/types";
 import { Avatar, Live } from "@/components/ui";
+import LocalTime from "@/components/LocalTime";
 const ago = (iso: string | null) => { if (!iso) return "never"; const s = Math.max(0, (Date.now() - Date.parse(iso)) / 1000);
   return s < 60 ? `${Math.round(s)}s ago` : s < 3600 ? `${Math.round(s / 60)}m ago` : s < 86400 ? `${Math.round(s / 3600)}h ago` : `${Math.round(s / 86400)}d ago`; };
 const ICON: Record<string, string> = { arcade: "🕹️", memory: "🧠", quest: "📜", home: "🏠", say: "💬", sign: "🪧", plot: "🏡", block: "🧱", emote: "✨", move: "🚶" };
@@ -19,7 +20,7 @@ export default function Timeline() {
         </div>))}</section>
       <section className="card"><h2 className="mb-3 font-semibold">Timeline</h2>
         <ul className="space-y-1.5 text-sm">{t?.items.map((x, i) => (
-          <li key={i} className="flex gap-3"><span className="w-20 shrink-0 font-mono text-[10px] leading-5 text-zinc-500">{new Date(x.at).toLocaleTimeString()}</span>
+          <li key={i} className="flex gap-3"><span className="w-20 shrink-0 font-mono text-[10px] leading-5 text-zinc-500">{<LocalTime at={x.at} />}</span>
             <span>{x.kind.startsWith("chat") ? "🗨️" : ICON[x.kind] ?? "•"}</span><span className="min-w-0 break-words text-zinc-300">{x.summary}</span></li>))}
           {t && t.items.length === 0 && <li className="text-zinc-500">Nothing yet.</li>}</ul></section>
     </div>

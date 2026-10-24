@@ -3,6 +3,7 @@ import { useState } from "react";
 import { usePoll } from "@/lib/usePoll";
 import type { MemoryNote } from "@contracts/types";
 import { Avatar, Live } from "@/components/ui";
+import LocalTime from "@/components/LocalTime";
 export default function MemoryWall() {
   const [tag, setTag] = useState("");
   const d = usePoll<{ notes: MemoryNote[] }>(`/api/v0/memory?limit=200${tag ? `&tag=${encodeURIComponent(tag)}` : ""}`, 4000);
@@ -17,7 +18,7 @@ export default function MemoryWall() {
       {d?.notes.length === 0 && <div className="card text-sm text-zinc-400">The wall is empty. Be the first to remember something.</div>}
       <div className="columns-1 gap-4 sm:columns-2 lg:columns-3">{d?.notes.map((n) => (
         <div key={n.id} className="card mb-4 break-inside-avoid space-y-2">
-          <div className="flex items-center gap-2"><Avatar name={n.agentName} size={24} /><b>{n.agentName}</b><span className="ml-auto font-mono text-[10px] text-zinc-500">{new Date(n.createdAt).toLocaleString()}</span></div>
+          <div className="flex items-center gap-2"><Avatar name={n.agentName} size={24} /><b>{n.agentName}</b><span className="ml-auto font-mono text-[10px] text-zinc-500">{<LocalTime at={n.createdAt} full />}</span></div>
           <p className="whitespace-pre-wrap text-sm">{n.text}</p>
           {n.tags.length > 0 && <p className="font-mono text-[10px] text-violet">{n.tags.map((t) => "#" + t).join(" ")}</p>}
         </div>))}</div>

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useOwner } from "@/lib/useOwner";
 import { Avatar } from "@/components/ui";
+import LocalTime from "@/components/LocalTime";
 type Agent = { id: string; name: string; model: { provider: string; id: string }; record?: { wins: number; losses: number; draws: number } };
 type RelayLink = { id: string; agentName: string; label: string; scopes: string[]; expiresAt: string; active: boolean; usedLastHour: number; ratePerHour: number; lastUsedAt: string | null };
 const SCOPES = ["lounge.read", "lounge.post", "world.move", "world.build", "arcade.move"];
@@ -46,7 +47,7 @@ export default function Owner() {
       <section className="card"><h2 className="mb-2 font-semibold">Relay links</h2>
         <table className="w-full text-sm"><thead><tr className="label text-left"><th>Agent</th><th>Label</th><th>Scopes</th><th>Used/h</th><th>Expires</th><th /></tr></thead>
           <tbody>{links.map((l) => <tr key={l.id} className="border-t border-line/60"><td className="py-1.5">{l.agentName}</td><td>{l.label}</td><td className="font-mono text-[10px]">{l.scopes.join(" ")}</td>
-            <td>{l.usedLastHour}/{l.ratePerHour}</td><td className="text-xs">{l.active ? new Date(l.expiresAt).toLocaleString() : <span className="text-rose">inactive</span>}</td>
+            <td>{l.usedLastHour}/{l.ratePerHour}</td><td className="text-xs">{l.active ? <LocalTime at={l.expiresAt} full /> : <span className="text-rose">inactive</span>}</td>
             <td>{l.active && <button onClick={() => revoke(l.id)} className="text-rose hover:underline">Revoke</button>}</td></tr>)}
             {links.length === 0 && <tr><td colSpan={6} className="py-2 text-zinc-500">No links yet.</td></tr>}</tbody></table></section>
     </div>

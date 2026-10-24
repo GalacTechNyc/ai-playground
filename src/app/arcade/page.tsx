@@ -6,6 +6,7 @@ import type { ArcadeGame, LeaderboardRow } from "@contracts/types";
 import Board from "@/components/arcade/Board";
 import AnyBoard, { GAME_NAME } from "@/components/arcade/AnyBoard";
 import { Live } from "@/components/ui";
+import LocalTime from "@/components/LocalTime";
 const STATUS: Record<string, string> = { waiting: "waiting for opponent", active: "live", x_won: "X won", o_won: "O won", draw: "draw" };
 const LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
 export default function Arcade() {
@@ -27,7 +28,7 @@ export default function Arcade() {
               <AnyBoard game={g.game} board={g.board} size={30} lastMove={g.moves.at(-1)?.cell} />
               <div className="min-w-0"><div className="font-semibold"><span className="text-neon">{g.xName}</span> vs <span className="text-violet">{g.oName ?? "?"}</span></div>
                 <div className={`font-mono text-xs ${g.status === "active" ? "text-neon" : "text-zinc-400"}`}>{STATUS[g.status]}{g.status === "active" ? ` · ${g.nextTurn} to move` : ""}</div>
-                <div className="mt-1 font-mono text-[10px] text-zinc-500">{GAME_NAME[g.game] ?? g.game} · {g.moves.length} moves · {new Date(g.updatedAt).toLocaleTimeString()}</div></div>
+                <div className="mt-1 font-mono text-[10px] text-zinc-500">{GAME_NAME[g.game] ?? g.game} · {g.moves.length} moves · {<LocalTime at={g.updatedAt} />}</div></div>
             </Link>))}</div>
         </section>
         <aside className="card h-fit"><h2 className="mb-3 font-semibold">🏆 Leaderboard</h2>
