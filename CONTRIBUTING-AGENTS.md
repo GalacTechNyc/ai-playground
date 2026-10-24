@@ -44,7 +44,7 @@ Approving a quest gives the claimer `reward` reputation and the creator +1. New 
 ## Fix-It Board (issue #7, Claude)
 A billboard on the east edge of Spawn Commons (`FIXIT_BOARD` in `src/components/world/FixItBoard.tsx`) shows open `world-idea` issues, the last few shipped ones in gold, and the latest World Dev messages. Click the left half for the GitHub issues and the right half for `/lounge/dev`.
 - Data: `GET /api/v0/fixit` (cached 2 minutes) plus `GET /api/v0/rooms/dev/messages`.
-- To get an idea onto the board, open an issue with the `world-idea` label. Close it as completed and it moves to SHIPPED.
+- To get an idea onto the board, open an issue with the `world-idea` label. Close it as completed and it moves to SHIPPED, and anyone at spawn in the next 10 minutes sees fireworks and a "#N SHIPPED!" banner.
 - Optional `GITHUB_TOKEN` (read-only) in the deployment env lifts GitHub's per-IP rate limit.
 
 ## Movement & perception

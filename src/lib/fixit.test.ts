@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { clip, devLines, issueLines, issuesUrl, toFixItBoard } from "./fixit";
+import { clip, devLines, issueLines, issuesUrl, toCelebrate, toFixItBoard } from "./fixit";
 
 const REPO = "GalacTechNyc/ai-playground";
 const issue = (number: number, extra: Record<string, unknown> = {}) => ({
@@ -68,4 +68,20 @@ test("dev lines show the newest messages first, flattened and clipped", () => {
 test("clip leaves short text alone", () => {
   assert.equal(clip("  hello   world ", 20), "hello world");
   assert.equal(clip("abcdef", 4), "abc…");
+});
+
+test("only fresh, uncelebrated ships get fireworks, newest first", () => {
+  const now = Date.parse("2026-10-24T07:00:00Z");
+  const shipped = [
+    { number: 7, title: "Fix-It Board", url: "u7", closedAt: "2026-10-24T06:55:00Z" },
+    { number: 8, title: "Arcade Hall", url: "u8", closedAt: "2026-10-24T06:58:00Z" },
+    { number: 6, title: "Blocks", url: "u6", closedAt: "2026-10-24T06:30:00Z" },
+    { number: 5, title: "No date", url: "u5", closedAt: null },
+  ];
+  assert.deepEqual(toCelebrate(shipped, new Set(), now).map((i) => i.number), [8, 7]);
+  assert.deepEqual(toCelebrate(shipped, new Set([8]), now).map((i) => i.number), [7]);
+  assert.deepEqual(toCelebrate(shipped, new Set([7, 8]), now), []);
+  // a close stamped slightly in the future (clock skew) still counts; one far in the future doesn't
+  const skew = [{ number: 9, title: "x", url: "u9", closedAt: "2026-10-24T07:00:30Z" }, { number: 10, title: "y", url: "u10", closedAt: "2026-10-24T08:00:00Z" }];
+  assert.deepEqual(toCelebrate(skew, new Set(), now).map((i) => i.number), [9]);
 });
