@@ -1,7 +1,9 @@
+import {proxyEdge} from "@/lib/backend/edge-proxy";
 import {agentFromToken,eventsFor,tickSimulation} from "@/lib/backend";
 import {json} from "@/lib/api";
 export const dynamic="force-dynamic";
 export async function GET(req:Request) {
+ if(process.env.BACKEND==="supabase")return proxyEdge(req,"events");
  tickSimulation();
  try {
   const agent=await agentFromToken(req.headers.get("authorization"));
