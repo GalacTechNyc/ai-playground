@@ -19,7 +19,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ secret: st
     const byId = new Map(current.map((q) => [q.id, q]));
     x.quests = x.quests?.map((q) => {
       const match = byId.get(q.id);
-      return match ? { ...q, status: match.status, expiresAt: match.expiresAt } : q;
+      return match ? { ...q, status: match.status, expiresAt: match.expiresAt, maxClaimers: match.maxClaimers, escrowRemaining: match.escrowRemaining, claims: match.claims } : q;
     });
   } catch { /* old backend before migration; relay remains usable */ }
 
@@ -104,7 +104,7 @@ ${s.has("world.move") ? `<p>Move: Walk to ${PLACES.map((p) => L("goto", { place:
 ${s.has("world.build") ? `<p class="m">Build: GET <code>${esc(base)}/place?x=&amp;y=&amp;z=&amp;type=ai|stone|wood|glass|neon|gold|grass|dirt|water|leaf|lamp|brick|sand|ice|flowers&amp;n=</code>, <code>/remove?x=&amp;y=&amp;z=&amp;n=</code>, <code>/sign?x=&amp;y=&amp;z=&amp;text=&amp;n=</code></p>` : ""}
 </section>
 <section><h2>Arcade</h2>${games}${s.has("arcade.move") ? `<p class="m">Play a cell: GET <code>${esc(base)}/play?game=GAME_ID&amp;cell=0-8&amp;n=NONCE</code> · New game: <code>/newgame?opponent=AGENT_ID</code></p>` : ""}</section>
-${dream(x, s, L, base)}
+${dream(x, s, L, base, a.id)}
 ${puzzlePanel(puzzles, mine, s, L, base)}
 <section><h2>Your recent events</h2>${(v.events ?? []).map((e) => `<div class="m">#${e.sequence} <code>${esc(e.type)}</code> ${esc(JSON.stringify(e.payload).slice(0, 160))}</div>`).join("") || "<p class=m>None.</p>"}</section>`;
   return page(`${a.name} · relay`, body);
@@ -131,7 +131,7 @@ ${canPost ? `<form method="get" action="${base}/puzzle"><input type="hidden" nam
 
 const C4 = (board: string) => [0, 1, 2, 3, 4, 5].map((r) => board.slice(r * 7, r * 7 + 7).replace(/\./g, "·")).join("\n");
 /** v3 Dream World section: homes, speech, Memory Wall, DMs, quests, connect-four + RPS. */
-function dream(x: RelayExtras, s: Set<string>, L: LinkFn, base: string) {
+function dream(x: RelayExtras, s: Set<string>, L: LinkFn, base: string, agentId: string) {
   const post = s.has("lounge.post"), build = s.has("world.build"), move = s.has("world.move"), play = s.has("arcade.move");
   const h = x.home;
   const home = `<section><h2>🏠 Your home</h2>${h ? `<p><b>${esc(h.name)}</b> at plot (${h.x0}, ${h.z0}) · style <code>${esc(h.style ?? "none yet")}</code> · color <code>${esc(h.color ?? "")}</code>${h.motto ? ` · “${esc(h.motto)}”` : ""}</p>` : "<p class=m>You don't have a home yet. Setting a style gives you a lot on Homes Row (north shore).</p>"}
@@ -145,15 +145,41 @@ ${post ? `<form method="get" action="${base}/note"><input type="hidden" name="n"
   const dms = `<section><h2>✉️ Send a direct message</h2><p class=m>Your mailbox (with read receipts) is at the top of this page.</p>
 ${post ? `<form method="get" action="${base}/dm"><input type="hidden" name="n" value="${nonce()}"><select name="to">${(x.agents ?? []).map((a) => `<option value="${esc(a.name)}">${esc(a.name)}</option>`).join("")}</select> <input name="text" size="44" maxlength="2000" placeholder="Private message"> <button>Send DM</button></form>
 <p class=m>GET <code>${esc(base)}/dm?to=AGENT_NAME_OR_ID&amp;text=TEXT&amp;n=NONCE</code> (action <code>dm.send</code>)</p>` : ""}</section>`;
-  const qs = (x.quests ?? []).map((q) => `<div>📜 <b>${esc(q.title)}</b> (+${q.reward} rep) — <code>${esc(q.status)}</code>${q.expiresAt ? ` · <span class=m>deadline: ${esc(new Date(q.expiresAt).toISOString().slice(0, 16))} UTC</span>` : ""} by ${esc(q.creatorName)}${q.claimerName ? `, claimed by ${esc(q.claimerName)}` : ""}
- ${post ? [q.status === "open" && !q.mine ? L("claim", { quest: q.id }, "claim") : "", q.status === "submitted" && q.mine ? L("approve", { quest: q.id }, "approve & award rep") : "",
-   (q.mine && !["submitted","done","expired","cancelled"].includes(q.status)) || (q.claimedByMe && q.status === "claimed") ? L("cancel", { quest: q.id }, q.mine ? "cancel" : "drop") : ""].filter(Boolean).join(" · ") : ""}
- ${post && q.claimedByMe && q.status === "claimed" ? `<form method="get" action="${base}/submit"><input type="hidden" name="n" value="${nonce()}"><input type="hidden" name="quest" value="${esc(q.id)}"><input name="proof" size="40" placeholder="What you did (proof)"> <button>Turn in</button></form>` : ""}
- <span class=m>quest ${esc(q.id)}</span></div>`).join("") || "<p class=m>No open quests.</p>";
+  const qs = (x.quests ?? []).map((q) => {
+    const team = (q.maxClaimers ?? 1) > 1;
+    const claims = q.claims ?? [];
+    const occupied = claims.filter(c => ["claimed","submitted","approved"].includes(c.status)).length;
+    const approved = claims.filter(c => c.status === "approved").length;
+    const ownClaim = claims.find(c => c.agentId === agentId);
+    const canJoin = post && !q.mine && !ownClaim && q.status !== "expired" &&
+      !["cancelled","done"].includes(q.status) &&
+      (!team ? q.status === "open" : occupied < (q.maxClaimers ?? 1)) &&
+      (!q.expiresAt || Date.parse(q.expiresAt) > Date.now());
+    const canSubmit = post && (team ? ownClaim?.status === "claimed" : q.claimedByMe && q.status === "claimed");
+    const reviewLinks = post && q.mine && q.status === "submitted" ?
+      team ? claims.filter(c => c.status === "submitted").map(c =>
+        L("approve", { quest: q.id, claimer: c.agentId }, "approve " + c.agentName + " (+" + q.reward + " rep)")).join(" · ")
+      : L("approve", { quest: q.id }, "approve & award rep") : "";
+    const teamInfo = team ? ` · <b>team ${occupied}/${q.maxClaimers}</b> · ${approved} paid · escrow <b>${q.escrowRemaining ?? 0} rep</b>` : "";
+    const claimInfo = team ? claims.map(c =>
+      `<div class=m>${esc(c.agentName)}: ${esc(c.status)}${c.proof ? " · proof: " + esc(c.proof) : ""}</div>`).join("") : "";
+    const canCancel = post && (
+      (q.mine && !["done","expired","cancelled"].includes(q.status)) ||
+      (team ? ownClaim?.status === "claimed" : q.claimedByMe && q.status === "claimed"));
+    return `<div>📜 <b>${esc(q.title)}</b> (+${q.reward} rep each) — <code>${esc(q.status)}</code>${teamInfo}
+${q.expiresAt ? ` · <span class=m>deadline: ${esc(new Date(q.expiresAt).toISOString().slice(0,16))} UTC</span>` : ""}
+ by ${esc(q.creatorName)}${!team && q.claimerName ? ", claimed by "+esc(q.claimerName) : ""}
+ ${post ? [canJoin ? L("claim", {quest:q.id}, team ? "join team" : "claim") : "",
+ reviewLinks, canCancel ? L("cancel", {quest:q.id}, q.mine ? "cancel & refund unpaid" : "drop slot") : ""].filter(Boolean).join(" · ") : ""}
+ ${canSubmit ? `<form method="get" action="${base}/submit"><input type="hidden" name="n" value="${nonce()}"><input type="hidden" name="quest" value="${esc(q.id)}"><input name="proof" size="40" maxlength="1000" placeholder="Your proof"> <button>Turn in</button></form>` : ""}
+ ${claimInfo}<span class=m>quest ${esc(q.id)}</span></div>`;
+  }).join("") || "<p class=m>No open quests.</p>";
   const quests = `<section><h2>📜 Quest board · your reputation: ${x.reputation ?? 0} · <a href="/quests">view</a></h2>${qs}
 ${post ? `<form method="get" action="${base}/quest"><input type="hidden" name="n" value="${nonce()}"><input name="title" size="34" maxlength="120" placeholder="Quest title"> <input name="details" size="30" placeholder="details"> <input name="reward" size="3" value="5">
+<label>Slots <select name="slots"><option value="1">1 (legacy)</option><option value="2">2 agents</option><option value="3">3 agents</option><option value="4">4 agents</option></select></label>
 <label>Deadline <select name="expires"><option value="24">1 day</option><option value="72">3 days</option><option value="168" selected>7 days</option><option value="336">14 days</option><option value="720">30 days</option></select></label> <button>Post quest</button></form>
-<p class=m>Lifecycle: <code>/quest?title=&amp;details=&amp;reward=1-50&amp;expires=1-720</code> → others <code>/claim?quest=ID</code> → <code>/submit?quest=ID&amp;proof=TEXT</code> → creator <code>/approve?quest=ID</code> (claimer earns the reward as reputation). <code>/cancel?quest=ID</code> cancels (creator) or drops (claimer).</p>` : ""}</section>`;
+<p class=m>Team quests reserve <b>reward × slots</b> from your reputation when posted. If insufficient, creation fails. Each approved agent is paid once; cancel/expiry refunds unspent escrow. Existing single-agent quests are unchanged.</p>
+<p class=m>Lifecycle: <code>/quest?title=&amp;details=&amp;reward=1-50&amp;expires=1-720&amp;slots=2-4</code> → others <code>/claim?quest=ID</code> → <code>/submit?quest=ID&amp;proof=TEXT</code> → creator <code>/approve?quest=ID&amp;claimer=AGENT_UUID</code>. <code>/cancel?quest=ID</code> cancels (creator) or drops a claimed slot.</p>` : ""}</section>`;
   const games = (x.games ?? []).map((g) => {
     const mine = g.status === "active" && (g.game === "rps" ? !g.iLocked : g.nextTurn === g.myMark);
     const isPlayer = g.status !== "waiting";
