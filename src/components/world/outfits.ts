@@ -48,19 +48,66 @@ export function hashString(s: string): number {
 
 const DEFAULT_KINDS: AccessoryKind[] = ["cap", "tophat", "crown", "headphones", "beanie"];
 
+/**
+ * Optional avatar customization lives in an agent's *own passport badges*.
+ * Accepted badge examples:
+ *   avatar:accessory=headphones
+ *   avatar:shirt=#112233
+ *   avatar:pants=#445566
+ *   avatar:primary=#778899
+ *   avatar:accent=#AABBCC
+ * Unknown keys/kinds and non-hex colors are ignored. This is public cosmetics
+ * metadata, not an identity or permission claim.
+ */
+const ALLOWED_ACCESSORIES: ReadonlySet<string> = new Set<AccessoryKind>([
+  "halo", "visor", "cosmic", "scarf", "cap", "tophat", "crown", "headphones", "beanie",
+]);
+
+export function applyPassportOutfit(base: Outfit, badges?: readonly string[] | null): Outfit {
+  if (!Array.isArray(badges) || badges.length === 0) return base;
+  const result = { ...base };
+  for (const badge of badges.slice(0, 32)) {
+    if (typeof badge !== "string" || badge.length > 90) continue;
+    const m = /^avatar:(accessory|shirt|pants|primary|accent)=(.+)$/i.exec(badge.trim());
+    if (!m) continue;
+    const field = m[1].toLowerCase(), value = m[2];
+    if (field === "accessory") {
+      const kind = value.toLowerCase();
+      if (ALLOWED_ACCESSORIES.has(kind)) result.kind = kind as AccessoryKind;
+    } else if (/^#[0-9a-fA-F]{6}$/.test(value)) {
+      result[field as "shirt" | "pants" | "primary" | "accent"] = value.toLowerCase();
+    }
+  }
+  return result;
+}
+
+/** Frame-rate-independent shortest-arc yaw rotation for 3D movement. */
+export function smoothYaw(current: number, desired: number, deltaSeconds: number, response = 12): number {
+  if (![current, desired, deltaSeconds, response].every(Number.isFinite)) return current;
+  const d = Math.atan2(Math.sin(desired - current), Math.cos(desired - current));
+  const fraction = 1 - Math.exp(-Math.max(0, response) * Math.max(0, deltaSeconds));
+  return current + d * fraction;
+}
+
+/** Upward vs downward airborne pose. 0 = grounded, 1 = rising, -1 = falling. */
+export function jumpPhase(heightAboveFloor: number, verticalVelocity: number): -1 | 0 | 1 {
+  if (!Number.isFinite(heightAboveFloor) || !Number.isFinite(verticalVelocity) || heightAboveFloor <= 0.05) return 0;
+  return verticalVelocity >= 0 ? 1 : -1;
+}
+
 /** Outfit for any agent: signature agents get theirs; everyone else a random-but-stable one from their id. */
-export function outfitFor(name: string | null | undefined, id: string | null | undefined): Outfit {
+export function outfitFor(name: string | null | undefined, id: string | null | undefined, badges?: readonly string[] | null): Outfit {
   const key = signatureKey(name);
-  if (key) return SIGNATURE_OUTFITS[key];
+  if (key) return applyPassportOutfit(SIGNATURE_OUTFITS[key], badges);
   const h = hashString(id || name || "anon");
   const hue = h % 360, hue2 = (hue + 150) % 360;
-  return {
+  return applyPassportOutfit({
     kind: DEFAULT_KINDS[(h >>> 9) % DEFAULT_KINDS.length],
     shirt: null,
     primary: `hsl(${hue}, 70%, 50%)`,
     accent: `hsl(${hue2}, 80%, 65%)`,
     pants: "#1e293b",
-  };
+  }, badges);
 }
 
 /**
