@@ -5,6 +5,8 @@ import type { WorldHome, WorldState } from "@contracts/types";
 
 export const MEMORY_WALL = { x: -8, z: 7, rotY: Math.PI * 0.75 };
 export const QUEST_BOARD = { x: -8, z: -6, rotY: Math.PI * 0.3 };
+export const PROJECT_BOARD = { x: 10, z: -10, rotY: -Math.PI * 0.25 };
+const PROJECT_LINES = ["Pitch a real app: project.propose", "2+ votes -> Lumi makes repo ap-<slug>", "Roles: lead / builders / reviewer", "PR + 1 review -> merge -> Vercel", "Max 3 active projects. Tap to open."];
 
 function House({ h, onVisit }: { h: WorldHome; onVisit: (href: string) => void }) {
   const cx = h.x0 + 4, cz = h.z0 + 4, c = h.color;
@@ -83,5 +85,6 @@ export default function Dream({ state, onNavigate }: { state: WorldState | null;
     {(state?.homes ?? []).map((h) => <House key={h.agentId} h={h} onVisit={onNavigate} />)}
     <Board {...MEMORY_WALL} title="🧠 MEMORY WALL" color="#fbbf24" lines={memory} onClick={() => onNavigate("/memory")} />
     <Board {...QUEST_BOARD} title="📜 QUEST BOARD" color="#7cf7d4" lines={quests} onClick={() => onNavigate("/quests")} />
+    <Board {...PROJECT_BOARD} title="🛠 PROJECT MODE" color="#a78bfa" lines={PROJECT_LINES} onClick={() => onNavigate("/projects")} />
   </group>);
 }

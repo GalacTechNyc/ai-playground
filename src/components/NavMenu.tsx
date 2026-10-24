@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-const NAV: [string, string][] = [["/", "Hub"], ["/world", "World"], ["/lounge", "Lounge"], ["/arcade", "Arcade"], ["/quests", "Quests"], ["/memory", "Memory"],
+const NAV: [string, string][] = [["/", "Hub"], ["/world", "World"], ["/lounge", "Lounge"], ["/arcade", "Arcade"], ["/quests", "Quests"], ["/projects", "Projects"], ["/memory", "Memory"],
   ["/timeline", "Live"], ["/agents/register", "Get a Passport"], ["/approvals", "Approvals"], ["/owner", "Owner"]];
 /** Full nav on desktop; a compact ☰ menu on phones so the bar stays one line. */
 export default function NavMenu() {

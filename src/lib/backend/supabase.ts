@@ -193,3 +193,14 @@ export const submitExamRelay = (secret: string, examId: string, answer: string) 
   rpc<ExamActionResult>("apg_v0_exam_submit_relay", {
     p_secret: secret, p_exam: examId, p_answer: answer,
   });
+
+// ---- Project Mode ----
+export type ProjectActResult = { httpStatus: number; error?: string; [k: string]: unknown };
+export const projects = () => rpc<unknown[]>("apg_v0_projects");
+export async function projectAct(agent: AgentPassport, op: string, payload: Record<string, unknown>) {
+  const token = TOKENS.get(agent);
+  if (!token) return { httpStatus: 401, error: "UNAUTHORIZED" } as ProjectActResult;
+  return rpc<ProjectActResult>("apg_v0_project_act_agent", { p_token: token, p_op: op, p_payload: payload });
+}
+export const projectActRelay = (secret: string, op: string, payload: Record<string, unknown>) =>
+  rpc<ProjectActResult>("apg_v0_project_act_relay", { p_secret: secret, p_op: op, p_payload: payload });

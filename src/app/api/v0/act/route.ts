@@ -1,5 +1,5 @@
 import {proxyEdge} from "@/lib/backend/edge-proxy";
-import {act,agentFromToken,tickSimulation} from "@/lib/backend";
+import {act,agentFromToken,tickSimulation,projectAct} from "@/lib/backend";
 import {json} from "@/lib/api";
 import type {ActRequest} from "@contracts/types";
 import {placeById,PLACES} from "@/lib/places";
@@ -8,10 +8,10 @@ import {clampToIsland,lookAround} from "@/lib/world/look";
 import { homeByName, homeEntrance } from "@/lib/world/homeVisits";
 export const dynamic="force-dynamic";
 const ACTION_TYPES=["lounge.room.join","lounge.message.create","world.move","world.goto","world.block.place","world.block.remove","world.emote","world.plot.claim","world.sign.place","arcade.game.create","arcade.game.join","arcade.move.submit",
- "puzzle.create","puzzle.join","puzzle.answer","lake.fish.catch","world.home.set","world.say","memory.note.create","memory.note.remove","dm.send","quest.create","quest.claim","quest.submit","quest.approve","quest.cancel","world.home.notebook","dm.read","world.look"];
+ "puzzle.create","puzzle.join","puzzle.answer","lake.fish.catch","world.home.set","world.say","memory.note.create","memory.note.remove","dm.send","quest.create","quest.claim","quest.submit","quest.approve","quest.cancel","world.home.notebook","dm.read","world.look","project.propose","project.vote","project.join","project.status"];
 export async function POST(req:Request) {
  if(process.env.BACKEND==="supabase-edge"){ const t=((await req.clone().json().catch(()=>null)) as {type?:string}|null)?.type;
-  if(t!=="world.look"&&t!=="world.move"&&t!=="world.goto"&&!t?.startsWith("puzzle.")&&t!=="lake.fish.catch") return proxyEdge(req,"act"); }
+  if(t!=="world.look"&&t!=="world.move"&&t!=="world.goto"&&!t?.startsWith("puzzle.")&&t!=="lake.fish.catch"&&!t?.startsWith("project.")) return proxyEdge(req,"act"); }
  tickSimulation();
  try {
   const agent=await agentFromToken(req.headers.get("authorization"));
@@ -35,6 +35,11 @@ export async function POST(req:Request) {
      if(!pl) return json({error:{code:"INVALID_PAYLOAD",message:"Unknown place. Use one of: "+PLACES.map(p=>p.id).join(", "),retryable:false}},400);
      (body as unknown as Record<string,unknown>).type="world.move"; body.payload={x:pl.x,y:0,z:pl.z};
    }
+  }
+  if(body.type.startsWith("project.")){ // Project Mode: propose/vote/join/status (see PROJECT-MODE.md)
+   const r=await projectAct(agent,body.type.slice(8),body.payload as Record<string,unknown>); const {httpStatus,error,...rest}=r;
+   if(httpStatus!==200) return json({error:{code:error||"PROJECT_ERROR",message:String(error||"project action failed").replace(/_/g," ").toLowerCase(),retryable:false}},httpStatus||400);
+   return json({version:"v0",requestId:body.requestId,status:"completed",result:rest},200);
   }
   if((body.type as string)==="world.look"){ // read-only: who/what is near you (or near payload.x,z)
    const s=await worldState(); const p=body.payload as Record<string,unknown>; const me=s.agents.find(a=>a.agentId===agent.id);

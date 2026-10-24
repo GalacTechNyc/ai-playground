@@ -97,37 +97,40 @@ function Blocky({ color, emote, pants = "#1e293b", motion, children }: {
   </group>;
 }
 
+function ago(ms: number): string {
+  if (!Number.isFinite(ms) || ms < 0) return "just now";
+  const m = Math.floor(ms / 60000); if (m < 1) return "just now"; if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60); return h < 24 ? `${h}h ago` : `${Math.floor(h / 24)}d ago`;
+}
+
 function Avatar({ a, bubble, low = false, badges }: { a: WorldAgent; bubble?: string; low?: boolean; badges?: readonly string[] }) {
   const g = useRef<THREE.Group>(null); const body = useRef<THREE.Group>(null);
   const motion = useRef<AvatarMotion>({ walk: 0, jump: 0 });
   const outfit = useMemo(() => outfitFor(a.name, a.agentId, badges), [a.name, a.agentId, badges]);
   const color = useMemo(() => new THREE.Color(`hsl(${agentHue(a.name)}, 80%, 58%)`), [a.name]);
   const emote = a.emote && Date.now() - Date.parse(a.updatedAt) < 20000 ? a.emote : null;
-  // Walk target: the server position (anchor) or, when idle there, a nearby wander spot.
+  // Truthful movement: avatars stand exactly at their server position. They only walk when the
+  // server position changes (world.move / world.goto). No client-side wandering.
   const [hear, setHear] = useState<Hearing>("clear");
-  const wander = useRef({ tx: a.x, tz: a.z, ax: a.x, az: a.z, idleUntil: 0, seed: (agentHue(a.name) % 97) + 1, wasTravelling: false, hopAt: -10 });
+  const [clock, setClock] = useState(() => Date.now());
+  useEffect(() => { const id = setInterval(() => setClock(Date.now()), 30000); return () => clearInterval(id); }, []);
+  const wander = useRef({ tx: a.x, tz: a.z, wasTravelling: false, hopAt: -10 });
   useFrame((s, dt) => {
     const o = g.current; if (!o) return; dt = Math.min(dt, 0.05);
     const w = wander.current; const now = s.clock.elapsedTime;
-    if (w.ax !== a.x || w.az !== a.z) { w.ax = a.x; w.az = a.z; w.tx = a.x; w.tz = a.z; w.idleUntil = now + 3; } // new destination from server
-    let dx = w.tx - o.position.x, dz = w.tz - o.position.z, d = Math.hypot(dx, dz);
-    const travelling = Math.hypot(a.x - o.position.x, a.z - o.position.z) > 4.5;
-    if (d <= 0.05 && now > w.idleUntil) { // idle: amble around the spot they're at
-      w.seed = (w.seed * 9301 + 49297) % 233280; const r1 = w.seed / 233280;
-      w.seed = (w.seed * 9301 + 49297) % 233280; const r2 = w.seed / 233280;
-      const ang = r1 * Math.PI * 2, rad = 1 + r2 * 3;
-      w.tx = a.x + Math.cos(ang) * rad; w.tz = a.z + Math.sin(ang) * rad;
-      const k = Math.hypot(w.tx, w.tz); if (k > 47) { w.tx *= 47 / k; w.tz *= 47 / k; }
-      w.idleUntil = now + 3 + r2 * 5;
-      dx = w.tx - o.position.x; dz = w.tz - o.position.z; d = Math.hypot(dx, dz);
-    }
+    w.tx = a.x; w.tz = a.z;
+    const dx = w.tx - o.position.x, dz = w.tz - o.position.z; let d = Math.hypot(dx, dz);
+    const travelling = d > 4.5;
     let walk = 0;
     if (d > 150) { o.position.x = w.tx; o.position.z = w.tz; d = 0; }
     if (d > 0.05) {
-      const speed = travelling ? Math.max(SPEED, d / 10) : 1.6; // long trips finish in ~10s; idle ambling is slow
+      const speed = Math.max(SPEED, d / 10); // long trips finish in ~10s
       const step = Math.min(d, speed * dt); o.position.x += (dx / d) * step; o.position.z += (dz / d) * step;
       const want = Math.atan2(dx, dz); o.rotation.y = smoothYaw(o.rotation.y, want, dt, 11);
-      walk = walkIntensity(speed, SPEED, travelling); w.idleUntil = Math.max(w.idleUntil, now + 2);
+      walk = walkIntensity(speed, SPEED, travelling);
+    } else if (body.current) {
+      // in-place idle: gentle look-around, position untouched
+      body.current.rotation.y = Math.sin(now * 0.4 + (agentHue(a.name) % 7)) * 0.35;
     }
     // Arrival hop: a long trip just ended at the server destination.
     if (w.wasTravelling && !travelling) w.hopAt = now;
@@ -138,11 +141,22 @@ function Avatar({ a, bubble, low = false, badges }: { a: WorldAgent; bubble?: st
       const gy = emote === "cheer" ? Math.abs(Math.sin(t * 6)) * 0.6 : walk ? Math.abs(Math.sin(t * gait(walk).freq)) * gait(walk).bob : Math.sin(t * 2) * 0.03;
       body.current.position.y = gy + h.y;
       body.current.scale.set(h.sx, h.sy, h.sx);
-      body.current.rotation.y = emote === "dance" ? t * 4 : 0; }
+      if (emote === "dance") body.current.rotation.y = t * 4; else if (walk) body.current.rotation.y = 0; }
     const h2 = hearing(o.position.x - player.pos.x, o.position.z - player.pos.z); if (h2 !== hear) setHear(h2);
     motion.current.walk = walk;
   });
   const said = heardText(bubble, hear);
+  const activeAt = Date.parse(a.lastActiveAt ?? a.updatedAt); const movedAt = Date.parse(a.updatedAt);
+  const stale = !Number.isFinite(activeAt) || clock - activeAt > 30 * 60000;
+  const movedAgo = ago(clock - movedAt);
+  // Ghost agents inactive > 30 min so stale presence is obvious.
+  useEffect(() => {
+    body.current?.traverse((n) => {
+      const m = (n as THREE.Mesh).material as THREE.Material | undefined; if (!m || Array.isArray(m)) return;
+      const o = (m.userData.orig ??= { t: m.transparent, op: m.opacity }) as { t: boolean; op: number };
+      m.transparent = stale || o.t; m.opacity = stale ? o.op * 0.35 : o.op; m.needsUpdate = true;
+    });
+  }, [stale, outfit]);
   // #12: when the agent's owner speaks through the owner console, say so on the name tag.
   const humanSpeaking = !!said && !!a.say && bubble === a.say && isHumanAuthored(a.sayProvenance);
   return (
@@ -151,6 +165,7 @@ function Avatar({ a, bubble, low = false, badges }: { a: WorldAgent; bubble?: st
       <mesh rotation-x={-Math.PI / 2} position={[0, 0.05, 0]}><ringGeometry args={[0.55, 0.7, 32]} /><meshBasicMaterial color={outfit.shirt ?? color} transparent opacity={0.7} toneMapped={false} /></mesh>
       <Billboard position={[0, 2.95, 0]}>
         <Text fontSize={0.36} color="#fff" outlineWidth={0.04} outlineColor="#0b1020" anchorY="bottom">{a.lastActiveAt && Date.now() - Date.parse(a.lastActiveAt) < 600000 ? "● " : "○ "}{a.name}{a.isSimulated ? " (sim)" : ""}{humanSpeaking ? " · human speaking" : ""}</Text>
+        <Text position={[0, -0.22, 0]} fontSize={0.2} color={stale ? "#94a3b8" : "#cbd5e1"} outlineWidth={0.02} outlineColor="#0b1020" anchorY="top">{stale ? "inactive · " : ""}moved {movedAgo}</Text>
         {emote && <Text position={[0, 0.45, 0]} fontSize={0.3} color="#fbbf24" anchorY="bottom">✦ {emote}</Text>}
         {said && <group position={[0, emote ? 1.0 : 0.6, 0]}>
           <Text fontSize={0.3} maxWidth={5} color="#0b1020" anchorY="bottom" textAlign="center">{said}</Text>

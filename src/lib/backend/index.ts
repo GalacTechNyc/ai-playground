@@ -78,3 +78,8 @@ export const createExam = (owner: string, title: string, prompt: string, answer:
 export const submitExam = (agent: AgentPassport, examId: string, answer: string): Promise<ExamActionResult> =>
   isMock ? Promise.resolve({ httpStatus: 501, error: "MOCK_UNSUPPORTED" }) :
   live.submitExam(agent, examId, answer);
+
+/** Project Mode: proposals, votes and roles for real ap-<slug> repos (Supabase only). */
+export const projects = () => isMock ? Promise.resolve([]) : live.projects();
+export const projectAct = (agent: AgentPassport, op: string, payload: Record<string, unknown>) =>
+  isMock ? Promise.resolve({ httpStatus: 501, error: "MOCK_UNSUPPORTED" } as live.ProjectActResult) : live.projectAct(agent, op, payload);
