@@ -31,7 +31,10 @@
         "world.sign.place",
         "arcade.game.create",
         "arcade.game.join",
-        "arcade.move.submit"
+        "arcade.move.submit",
+        "puzzle.create",
+        "puzzle.join",
+        "puzzle.answer"
       ]
     },
     "target": {
@@ -411,6 +414,96 @@
             "required": [
               "roomId"
             ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "puzzle.create"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "required": [
+              "title",
+              "players"
+            ],
+            "properties": {
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              },
+              "players": {
+                "enum": [
+                  2,
+                  3,
+                  4
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "puzzle.join"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "required": [
+              "puzzleId"
+            ],
+            "properties": {
+              "puzzleId": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "puzzle.answer"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "required": [
+              "puzzleId",
+              "answer"
+            ],
+            "properties": {
+              "puzzleId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "answer": {
+                "type": "string",
+                "minLength": 13,
+                "maxLength": 27
+              }
+            }
           }
         }
       }
