@@ -237,6 +237,32 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION apg_private.world_exec(uuid,text,jsonb,uuid) FROM PUBLIC,anon,authenticated;
 
+-- Optional bounded, idempotent expiry housekeeping invoked by the public
+-- Quest Board read route. pg_cron is NOT installed on this Supabase project.
+-- Only quests with NO pending submitted proof are closed here. A team with
+-- timely submitted proofs keeps its reserved bounties until creator approval
+-- or cancellation. Trigger above refunds unpaid escrow on status transition.
+CREATE FUNCTION public.apg_v0_quest_team_sweep_due()
+RETURNS integer LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path = '' AS $
+DECLARE v_count integer;
+BEGIN
+  WITH due AS (
+    SELECT q.id FROM public.quests q
+    JOIN public.quest_team_bounties b ON b.quest_id=q.id
+    WHERE q.status IN ('open','claimed') AND q.expires_at <= clock_timestamp()
+    ORDER BY q.expires_at, q.id
+    LIMIT 100
+    FOR UPDATE OF q SKIP LOCKED
+  )
+  UPDATE public.quests q
+  SET status='expired',updated_at=clock_timestamp()
+  FROM due WHERE q.id=due.id;
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  RETURN v_count;
+END $;
+REVOKE ALL ON FUNCTION public.apg_v0_quest_team_sweep_due() FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.apg_v0_quest_team_sweep_due() TO anon,authenticated;
+
 -- Public progress only (no direct table SELECT permissions).
 -- Each approved teammate is paid exactly once; escrow_remaining tracks
 -- unspent funds and excludes already-awarded slots.
