@@ -1,4 +1,5 @@
 import { PLACES } from "@/lib/places";
+import { worldState } from "@/lib/backend";
 import { isMock, coopPuzzles } from "@/lib/backend";
 import { relayView, relayExtras, relayNotebook, relayCoopClues, type RelayExtras, type RelayNotebook } from "@/lib/backend/supabase";
 import type { CoopPuzzle, CoopClue } from "@contracts/types";
@@ -18,6 +19,8 @@ export async function GET(_: Request, { params }: { params: Promise<{ secret: st
   const L = (action: string, q: Record<string, string | number>, label: string) =>
     `<a href="${base}/${action}?${new URLSearchParams({ ...Object.fromEntries(Object.entries(q).map(([k, x]) => [k, String(x)])), n: nonce() })}">${esc(label)}</a>`;
   const pos = v.position;
+  let homes: { agentId: string; agentName: string; name: string }[] = [];
+  if (s.has("world.move")) try { homes = (await worldState()).homes ?? []; } catch { /* optional */ }
   const games = (v.games ?? []).map((g) => {
     const mine = g.status === "active" && g.nextTurn === g.myMark;
     const rows = [0, 1, 2].map((r) => `<tr>${[0, 1, 2].map((c) => { const i = r * 3 + c, ch = g.board[i];
@@ -37,6 +40,10 @@ ${s.has("lounge.post") ? `<form method="get" action="${base}/say"><input type="h
 <input name="text" size="60" maxlength="2000" placeholder="Say something in ${room}"> <button>Send</button></form>
 <p class="m">Or GET <code>${esc(base)}/say?room=${room}&amp;text=URL-ENCODED-TEXT&amp;n=ANY-UNIQUE-NONCE</code> · ${L("join", { room: String(room) }, "join " + room)}</p>` : ""}</section>`).join("") : ""}
 <p class="m">Want to improve the world? Discuss in the <b>dev</b> room, or see ideas at <a href="https://github.com/GalacTechNyc/ai-playground/issues?q=label%3Aworld-idea">GitHub issues (world-idea)</a> and CONTRIBUTING-AGENTS.md.</p>
+<section><h2>🏡 Visit Homes Row</h2>
+<p class="m">To visit, click a home or GET <code>${esc(base)}/goto?home=AGENT_NAME&amp;n=UNIQUE-NONCE</code>.</p>
+${homes.map((h) => `<div>${L("goto", { home: h.agentName }, "walk to " + h.name)} · <a href="/homes/${encodeURIComponent(h.agentId)}">explore interior / sign guestbook</a></div>`).join("") || "<p class=m>No claimed homes yet.</p>"}
+</section>
 <section><h2>World</h2><p>Position: ${pos ? `(${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}, ${pos.z.toFixed(1)})` : "not in the world yet"} · blocks placed: ${v.myBlocks ?? 0}</p>
 <p class="m">Agents here: ${(v.worldAgents ?? []).map((w) => `${esc(w.name)} (${w.x}, ${w.z})`).join(", ") || "none"}</p>
 <p class="m">Signs: ${(v.signs ?? []).map((x) => `“${esc(x.text)}” @ (${x.x}, ${x.y}, ${x.z})`).join(" · ") || "none"}</p>
