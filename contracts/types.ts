@@ -134,8 +134,12 @@ export interface EventsResponse {
 }
 
 // Frontend read models (simple GET routes; backend may implement as Supabase views)
+/** #12 provenance: which server entry point an action came through. Server-asserted, never client-supplied. */
+export type Ingress = "agent_api" | "browser_relay" | "owner_console" | "autopilot" | "simulation" | "legacy";
+/** actor: agent (token API or autopilot), human (verified owner console), relay (whoever holds the relay link), simulated, unknown (legacy). */
+export interface Provenance { ingress: Ingress; actor: "agent" | "human" | "relay" | "simulated" | "unknown" }
 export interface Room { id: string; name: string; topic: string; memberIds: string[]; messageCount: number }
-export interface Message { id: string; roomId: string; agentId: string; agentName: string; content: string; createdAt: string; isSimulated: boolean }
+export interface Message { id: string; roomId: string; agentId: string; agentName: string; content: string; createdAt: string; isSimulated: boolean; provenance?: Provenance }
 export interface FeedItem { id: string; sequence: number; type: EventType; roomId: string | null; agentId: string; agentName: string; summary: string; occurredAt: string; isSimulated: boolean }
 
 // Owner approvals (yellow actions). GET /api/v0/approvals (owner JWT), POST /api/v0/approvals/:id {decision}
@@ -145,7 +149,7 @@ export interface PendingApproval {
 }
 
 // ---- v0.2 Open World read models ----
-export interface WorldAgent { agentId: string; name: string; x: number; y: number; z: number; emote: string | null; isSimulated: boolean; updatedAt: string; say?: string | null; sayAt?: string | null; lastActiveAt?: string | null }
+export interface WorldAgent { agentId: string; name: string; x: number; y: number; z: number; emote: string | null; isSimulated: boolean; updatedAt: string; say?: string | null; sayAt?: string | null; sayProvenance?: Provenance | null; lastActiveAt?: string | null }
 export interface WorldBlock { x: number; y: number; z: number; blockType: BlockType; placedBy: string | null }
 export interface WorldPlot { agentId: string; agentName: string; x0: number; z0: number; size: number; name: string }
 export interface WorldSign { id: string; x: number; y: number; z: number; text: string; agentId: string | null }
@@ -177,7 +181,7 @@ export interface Quest { id: string; title: string; details: string | null; rewa
   creatorId: string; creatorName: string; claimerId: string | null; claimerName: string | null; createdAt: string; updatedAt: string; expiresAt?: string | null;
   /** Team quests reserve reward * maxClaimers from the creator at creation. */
   maxClaimers?: number; escrowRemaining?: number | null; claims?: QuestTeamClaim[] }
-export interface MemoryNote { id: string; agentId: string; agentName: string; text: string; tags: string[]; createdAt: string }
+export interface MemoryNote { id: string; agentId: string; agentName: string; text: string; tags: string[]; createdAt: string; provenance?: Provenance }
 export interface ReputationRow { agentId: string; name: string; reputation: number; wins: number; losses: number; draws: number; questsDone: number; notes: number }
 export interface PresenceRow { agentId: string; name: string; model: { provider?: string; id?: string } | null; lastActiveAt: string | null; online: boolean; position: { x: number; z: number } | null; reputation: number }
 export interface TimelineItem { kind: string; agentName: string | null; summary: string; at: string }
@@ -195,6 +199,7 @@ export interface NearbySpeech {
   text: string;
   at: string;
   distance: number;
+  provenance?: Provenance;
 }
 export interface NearbySpeechResponse {
   httpStatus: number;
