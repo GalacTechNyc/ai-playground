@@ -15,6 +15,8 @@ import LampGlow from "./LampGlow";
 import FixItBoard from "./FixItBoard";
 import ArcadeHall from "./ArcadeHall";
 import CipherRingTerminal from "./CipherRingTerminal";
+import Lake from "./Lake";
+import { boat, clampToLake, inLake, onDock, DOCK } from "./lake";
 import Accessory from "./Accessories";
 import { gait, hop, outfitFor, walkIntensity } from "./outfits";
 import type { PortalStation } from "@/lib/world/traversal";
@@ -141,23 +143,31 @@ function Player({ building }: { building: boolean }) {
     const m = Math.hypot(ix, iz); if (m > 1) { ix /= m; iz /= m; }
     const fwd = new THREE.Vector3(); camera.getWorldDirection(fwd); fwd.y = 0; fwd.normalize();
     const right = new THREE.Vector3(-fwd.z, 0, fwd.x);
-    const speed = (k.has("ShiftLeft") || input.run ? 10 : 6) * dt;
+    const v = vel.current;
+    const swimming = !boat.riding && v.y <= 0.001 && inLake(o.position.x, o.position.z);
+    const speed = (k.has("ShiftLeft") || input.run ? 10 : 6) * dt * (swimming ? 0.55 : 1);
     const before = o.position.clone();
     const mv = fwd.multiplyScalar(iz).add(right.multiplyScalar(ix));
+    if (boat.riding) {
+      // rowing: WASD/joystick steer the boat; the player sits in it
+      if (mv.lengthSq() > 0.0001) { const b = clampToLake(boat.x + mv.x * speed * 0.8, boat.z + mv.z * speed * 0.8); boat.x = b.x; boat.z = b.z; boat.rot = Math.atan2(mv.x, mv.z); o.rotation.y = boat.rot; }
+      o.position.set(boat.x, 0.35 + Math.sin(s.clock.elapsedTime * 1.6) * 0.05, boat.z); v.y = 0; v.vy = 0; input.jump = false;
+    } else {
     if (mv.lengthSq() > 0.0001) { o.position.addScaledVector(mv, speed); o.rotation.y = Math.atan2(mv.x, mv.z); }
     const r = Math.hypot(o.position.x, o.position.z); if (r > ISLAND_R - 1) o.position.multiplyScalar((ISLAND_R - 1) / r);
-    const v = vel.current;
-    if (v.y <= 0.001 && (k.has("Space") || input.jump)) { v.vy = 9; input.jump = false; }
-    const pad = v.y <= 0.001 ? INTERACTABLES.find((i) => i.kind === "jumpPad" && Math.hypot(o.position.x - i.x, o.position.z - i.z) < i.radius) : undefined; if (pad) v.vy = pad.launch;
+    const floor = onDock(o.position.x, o.position.z) ? DOCK.top : 0;
+    if (v.y <= floor + 0.001 && (k.has("Space") || input.jump)) { v.vy = swimming ? 7 : 9; input.jump = false; }
+    const pad = v.y <= floor + 0.001 ? INTERACTABLES.find((i) => i.kind === "jumpPad" && Math.hypot(o.position.x - i.x, o.position.z - i.z) < i.radius) : undefined; if (pad) v.vy = pad.launch;
     if (player.impulse) { v.vy = player.impulse.y; v.vx = player.impulse.x; v.vz = player.impulse.z; player.impulse = null; }
-    if (v.y > 0 || v.vy > 0) { o.position.x += v.vx * dt; o.position.z += v.vz * dt; } else { v.vx = 0; v.vz = 0; }
-    v.vy -= 25 * dt; v.y = Math.max(0, v.y + v.vy * dt); if (v.y === 0) v.vy = Math.max(v.vy, 0);
-    o.position.y = v.y;
+    if (v.y > floor || v.vy > 0) { o.position.x += v.vx * dt; o.position.z += v.vz * dt; } else { v.vx = 0; v.vz = 0; }
+    v.vy -= 25 * dt; v.y = Math.max(floor, v.y + v.vy * dt); if (v.y === floor) v.vy = Math.max(v.vy, 0);
+    o.position.y = v.y + (swimming ? -0.8 + Math.sin(s.clock.elapsedTime * 3) * 0.06 : 0);
+    }
     player.pos.x = o.position.x; player.pos.y = o.position.y; player.pos.z = o.position.z;
     const delta = o.position.clone().sub(before);
     camera.position.add(delta);
     if (controls) { controls.target.set(o.position.x, o.position.y + 1.6, o.position.z); }
-    const walk = mv.lengthSq() > 0.0001 && v.y === 0 ? (k.has("ShiftLeft") || input.run ? 1.5 : 1) : 0; const t = s.clock.elapsedTime;
+    const walk = mv.lengthSq() > 0.0001 && !boat.riding && v.y <= 0.401 ? (k.has("ShiftLeft") || input.run ? 1.5 : 1) : 0; const t = s.clock.elapsedTime;
     if (walk !== anim.walk || Math.floor(t * 30) !== Math.floor(anim.t * 30)) setAnim({ walk, t });
   });
   return (<group ref={g} position={[0, 0, 8]}>
@@ -248,6 +258,7 @@ export default function Scene({ state, onIntent, onNavigate, building, bloom, bu
       <FixItBoard onNavigate={onNavigate} />
       <ArcadeHall onNavigate={onNavigate} />
       <CipherRingTerminal onNavigate={onNavigate} />
+      <Lake enabled={!building} />
       {[...byType].map(([t, bs]) => <BlockLayer key={t} type={t} blocks={bs} onPick={pickBlock} />)}
       <LampGlow blocks={byType.get("lamp") ?? []} playerPosition={player.pos} />
       {stackedSigns(state?.signs ?? []).map(({ s, k }) => (
