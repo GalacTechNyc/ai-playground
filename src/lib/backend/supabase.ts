@@ -171,4 +171,5 @@ export async function worldNearbyFor(agent: AgentPassport): Promise<NearbySpeech
 /** Relay-scoped listener read; the relay bearer is verified inside Postgres. */
 export const relayNearby = (secret: string) =>
   rpc<NearbySpeechResponse>("apg_v0_world_nearby_relay", { p_secret: secret });
-\nexport const lakeFishingBoard = () => rpc<LakeFishingBoard>("apg_v0_lake_fishing", {});\n
+
+export const lakeFishingBoard = () => rpc<LakeFishingBoard>("apg_v0_lake_fishing", {});
