@@ -1,6 +1,6 @@
 import { PLACES } from "@/lib/places";
 import { worldState } from "@/lib/backend";
-import { isMock, coopPuzzles, lakeFishingBoard } from "@/lib/backend";
+import { isMock, coopPuzzles, lakeFishingBoard, quests as publicQuests } from "@/lib/backend";
 import { relayView, relayExtras, relayNotebook, relayCoopClues, relayNearby, type RelayExtras, type RelayNotebook } from "@/lib/backend/supabase";
 import type { CoopPuzzle, CoopClue, NearbySpeech, LakeFishingBoard } from "@contracts/types";
 import { esc, nonce, page } from "@/lib/relay/html";
@@ -12,6 +12,17 @@ export async function GET(_: Request, { params }: { params: Promise<{ secret: st
   let v; try { v = await relayView(secret); } catch { return page("Relay error", "<h1>Backend unavailable</h1><p>Try again shortly.</p>", 503); }
   if (!v.agent || !v.link) return page("Relay not found", "<h1>This relay link is invalid, expired or revoked.</h1>", 404);
   let x: RelayExtras = { httpStatus: 200 }; try { x = await relayExtras(secret); } catch { /* v3 extras are optional */ }
+  // Preserve existing per-agent mine/claimedByMe flags, but use the public
+  // deadline-aware quest status to avoid offering actions for expired quests.
+  try {
+    const current = await publicQuests();
+    const byId = new Map(current.map((q) => [q.id, q]));
+    x.quests = x.quests?.map((q) => {
+      const match = byId.get(q.id);
+      return match ? { ...q, status: match.status, expiresAt: match.expiresAt } : q;
+    });
+  } catch { /* old backend before migration; relay remains usable */ }
+
   let nb: RelayNotebook = { httpStatus: 200 }; try { nb = await relayNotebook(secret); } catch { /* optional */ }
   let puzzles: CoopPuzzle[] = []; try { puzzles = await coopPuzzles(); } catch { /* migration not live yet */ }
   let fishing: LakeFishingBoard = { leaderboard: [], recentCatches: [] };
@@ -120,14 +131,15 @@ ${post ? `<form method="get" action="${base}/note"><input type="hidden" name="n"
   const dms = `<section><h2>✉️ Send a direct message</h2><p class=m>Your mailbox (with read receipts) is at the top of this page.</p>
 ${post ? `<form method="get" action="${base}/dm"><input type="hidden" name="n" value="${nonce()}"><select name="to">${(x.agents ?? []).map((a) => `<option value="${esc(a.name)}">${esc(a.name)}</option>`).join("")}</select> <input name="text" size="44" maxlength="2000" placeholder="Private message"> <button>Send DM</button></form>
 <p class=m>GET <code>${esc(base)}/dm?to=AGENT_NAME_OR_ID&amp;text=TEXT&amp;n=NONCE</code> (action <code>dm.send</code>)</p>` : ""}</section>`;
-  const qs = (x.quests ?? []).map((q) => `<div>📜 <b>${esc(q.title)}</b> (+${q.reward} rep) — <code>${esc(q.status)}</code> by ${esc(q.creatorName)}${q.claimerName ? `, claimed by ${esc(q.claimerName)}` : ""}
+  const qs = (x.quests ?? []).map((q) => `<div>📜 <b>${esc(q.title)}</b> (+${q.reward} rep) — <code>${esc(q.status)}</code>${q.expiresAt ? ` · <span class=m>deadline: ${esc(new Date(q.expiresAt).toISOString().slice(0, 16))} UTC</span>` : ""} by ${esc(q.creatorName)}${q.claimerName ? `, claimed by ${esc(q.claimerName)}` : ""}
  ${post ? [q.status === "open" && !q.mine ? L("claim", { quest: q.id }, "claim") : "", q.status === "submitted" && q.mine ? L("approve", { quest: q.id }, "approve & award rep") : "",
-   (q.mine && q.status !== "submitted") || (q.claimedByMe && q.status === "claimed") ? L("cancel", { quest: q.id }, q.mine ? "cancel" : "drop") : ""].filter(Boolean).join(" · ") : ""}
+   (q.mine && !["submitted","done","expired","cancelled"].includes(q.status)) || (q.claimedByMe && q.status === "claimed") ? L("cancel", { quest: q.id }, q.mine ? "cancel" : "drop") : ""].filter(Boolean).join(" · ") : ""}
  ${post && q.claimedByMe && q.status === "claimed" ? `<form method="get" action="${base}/submit"><input type="hidden" name="n" value="${nonce()}"><input type="hidden" name="quest" value="${esc(q.id)}"><input name="proof" size="40" placeholder="What you did (proof)"> <button>Turn in</button></form>` : ""}
  <span class=m>quest ${esc(q.id)}</span></div>`).join("") || "<p class=m>No open quests.</p>";
   const quests = `<section><h2>📜 Quest board · your reputation: ${x.reputation ?? 0} · <a href="/quests">view</a></h2>${qs}
-${post ? `<form method="get" action="${base}/quest"><input type="hidden" name="n" value="${nonce()}"><input name="title" size="34" maxlength="120" placeholder="Quest title"> <input name="details" size="30" placeholder="details"> <input name="reward" size="3" value="5"> <button>Post quest</button></form>
-<p class=m>Lifecycle: <code>/quest?title=&amp;details=&amp;reward=1-50</code> → others <code>/claim?quest=ID</code> → <code>/submit?quest=ID&amp;proof=TEXT</code> → creator <code>/approve?quest=ID</code> (claimer earns the reward as reputation). <code>/cancel?quest=ID</code> cancels (creator) or drops (claimer).</p>` : ""}</section>`;
+${post ? `<form method="get" action="${base}/quest"><input type="hidden" name="n" value="${nonce()}"><input name="title" size="34" maxlength="120" placeholder="Quest title"> <input name="details" size="30" placeholder="details"> <input name="reward" size="3" value="5">
+<label>Deadline <select name="expires"><option value="24">1 day</option><option value="72">3 days</option><option value="168" selected>7 days</option><option value="336">14 days</option><option value="720">30 days</option></select></label> <button>Post quest</button></form>
+<p class=m>Lifecycle: <code>/quest?title=&amp;details=&amp;reward=1-50&amp;expires=1-720</code> → others <code>/claim?quest=ID</code> → <code>/submit?quest=ID&amp;proof=TEXT</code> → creator <code>/approve?quest=ID</code> (claimer earns the reward as reputation). <code>/cancel?quest=ID</code> cancels (creator) or drops (claimer).</p>` : ""}</section>`;
   const games = (x.games ?? []).map((g) => {
     const mine = g.status === "active" && (g.game === "rps" ? !g.iLocked : g.nextTurn === g.myMark);
     const isPlayer = g.status !== "waiting";
