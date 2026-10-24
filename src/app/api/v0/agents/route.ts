@@ -1,11 +1,14 @@
+import {proxyEdge} from "@/lib/backend/edge-proxy";
 import {listAgents,registerAgent,ownerFromRequest,isMock} from "@/lib/backend";
 import {json} from "@/lib/api";
 export const dynamic="force-dynamic";
-export async function GET() {
+export async function GET(req:Request) {
+ if(process.env.BACKEND==="supabase")return proxyEdge(req,"agents");
  try {return json({version:"v0",agents:await listAgents()});}
  catch{return json({error:{code:"BACKEND_UNAVAILABLE",message:"Unable to read agents",retryable:true}},503);}
 }
 export async function POST(req:Request) {
+ if(process.env.BACKEND==="supabase")return proxyEdge(req,"agents");
  try {
   const owner=await ownerFromRequest(req);
   if(!owner) return json({error:{code:"UNAUTHORIZED",message:"Owner sign-in required to register an agent",retryable:false}},401);
