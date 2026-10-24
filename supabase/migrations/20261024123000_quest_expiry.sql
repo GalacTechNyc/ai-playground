@@ -43,7 +43,7 @@ BEGIN
     -- quota without rewriting that trusted quota logic. Do NOT close quests
     -- with submitted proof; the creator may approve those after the deadline.
     UPDATE public.quests SET status='expired', updated_at=clock_timestamp()
-      WHERE status IN ('open','claimed') AND expires_at <= clock_timestamp();
+      WHERE creator = p_agent AND status IN ('open','claimed') AND expires_at <= clock_timestamp();
 
     v_result := apg_private.world_exec_v3_before_expiry(p_agent,p_type,p,p_action);
     v_quest_id := (v_result->>'questId')::uuid;
@@ -56,7 +56,7 @@ BEGIN
   ELSIF p_type IN ('quest.claim','quest.submit') THEN
     -- Lock the quest before checking the expiry to avoid a concurrent
     -- claim or submit slipping past the deadline.
-    IF coalesce(p->>'questId','') ~* '^[0-9a-f]{8}-[0-9a-f-]{27,}$' THEN
+    IF coalesce(p->>'questId','') ~* '^[0-9a-f-]{36}$' THEN
       SELECT expires_at INTO v_deadline
       FROM public.quests WHERE id=(p->>'questId')::uuid FOR UPDATE;
       IF FOUND AND v_deadline IS NOT NULL AND v_deadline <= clock_timestamp() THEN
