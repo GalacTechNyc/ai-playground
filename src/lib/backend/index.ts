@@ -24,6 +24,23 @@ export const listApprovals = (owner:string) => isMock ? Promise.resolve(mock.lis
 import * as mw from "../mockWorld";
 const nm = (id: string) => mock.db().agents.get(id)?.name ?? "?";
 export const worldState = () => isMock ? Promise.resolve(mw.mockWorldState(nm)) : live.worldState();
+/** The token determines the server-trusted listening position. */
+export async function worldNearbyFor(agent: AgentPassport) {
+  if (!isMock) return live.worldNearbyFor(agent);
+  const world = mw.mockWorldState(nm);
+  const me = world.agents.find((a) => a.agentId === agent.id);
+  if (!me) return { httpStatus: 200, agentId: agent.id, radius: 12, messages: [] };
+  return {
+    httpStatus: 200, agentId: agent.id, radius: 12,
+    messages: world.agents
+      .filter((a) => a.say && a.sayAt && Math.hypot(a.x - me.x, a.z - me.z) <= 12)
+      .map((a) => ({
+        agentId: a.agentId, agentName: a.name, text: a.say as string,
+        at: a.sayAt as string, distance: Math.round(Math.hypot(a.x - me.x, a.z - me.z) * 10) / 10,
+      })),
+  };
+}
+
 export const arcadeGames = () => isMock ? Promise.resolve(mw.mockGames()) : live.arcadeGames();
 export const arcadeGame = (id: string) => isMock ? Promise.resolve(mw.mockGame(id)) : live.arcadeGame(id);
 export const leaderboard = () => isMock ? Promise.resolve(mw.mockLeaderboard(nm)) : live.leaderboard();
