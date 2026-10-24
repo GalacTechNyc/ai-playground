@@ -56,8 +56,12 @@ Deno.serve(async(req)=>{
   try {
     const u=new URL(req.url);
     let path=u.pathname;
-    if(!path.startsWith(routePrefix))return fail(404,"NOT_FOUND");
-    path=path.slice(routePrefix.length).replace(/^\//,"");
+    // Edge gateway implementations may supply either full /functions/v1,
+    // /playground/*, or only the function-relative suffix.
+    const slugAt=path.indexOf("/playground/");
+    if(slugAt>=0)path=path.slice(slugAt+"/playground/".length);
+    else if(path.endsWith("/playground"))path="";
+    else path=path.replace(/^\/functions\/v1\//,"").replace(/^\//,"");
     if(!key)return fail(503,"BACKEND_SECRET_UNAVAILABLE",true);
     if(req.method==="GET"&&path==="health") {
       return ok({status:"healthy",backend:"supabase",databaseConfigured:true});
