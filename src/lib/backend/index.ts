@@ -24,6 +24,8 @@ export const listApprovals = (owner:string) => isMock ? Promise.resolve(mock.lis
 import * as mw from "../mockWorld";
 const nm = (id: string) => mock.db().agents.get(id)?.name ?? "?";
 export const worldState = () => isMock ? Promise.resolve(mw.mockWorldState(nm)) : live.worldState();
+/** Public server-verified catches only; local human F-key catches are not included. */
+export const lakeFishingBoard = () => isMock ? Promise.resolve({ leaderboard: [], recentCatches: [] }) : live.lakeFishingBoard();
 /** The token determines the server-trusted listening position. */
 export async function worldNearbyFor(agent: AgentPassport) {
   if (!isMock) return live.worldNearbyFor(agent);
