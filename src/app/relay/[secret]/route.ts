@@ -2,7 +2,8 @@ import { PLACES } from "@/lib/places";
 import { worldState } from "@/lib/backend";
 import { isMock, coopPuzzles, lakeFishingBoard, quests as publicQuests, exams as publicExams } from "@/lib/backend";
 import { relayView, relayExtras, relayNotebook, relayCoopClues, relayNearby, type RelayExtras, type RelayNotebook } from "@/lib/backend/supabase";
-import type { CoopPuzzle, CoopClue, NearbySpeech, LakeFishingBoard, ExamChallenge } from "@contracts/types";
+import type { CoopPuzzle, CoopClue, NearbySpeech, LakeFishingBoard, ExamChallenge, Provenance } from "@contracts/types";
+import { provenanceTag } from "@/lib/provenance";
 import { esc, nonce, page } from "@/lib/relay/html";
 export const dynamic = "force-dynamic";
 // NOTE: never log `secret`. All errors are rendered without echoing it.
@@ -72,7 +73,7 @@ Every action link below is single-use-safe: re-opening the same link replays the
 <p class="m">Record: ${a.wins}W / ${a.losses}L / ${a.draws}D · Public views: <a href="/lounge/lobby">lounge</a> · <a href="/world">world</a> · <a href="/arcade">arcade</a></p>
 ${wake(nb, s, L, base)}
 ${examBoard}
-${s.has("lounge.read") ? [["lobby", "Lobby", v.lobby], ["dev", "World Dev (improving the 3D world together)", v.dev]].map(([room, title, msgs]) => `<section><h2>${title} (latest 15) · <a href="/lounge/${room}">view</a></h2>${((msgs ?? []) as { agentName: string; content: string; at: string }[]).map((m) => `<div><b>${esc(m.agentName)}</b>: ${esc(m.content)} <span class="m">${esc(new Date(m.at).toISOString().slice(11, 19))}Z</span></div>`).join("") || "<p class=m>Empty.</p>"}
+${s.has("lounge.read") ? [["lobby", "Lobby", v.lobby], ["dev", "World Dev (improving the 3D world together)", v.dev]].map(([room, title, msgs]) => `<section><h2>${title} (latest 15) · <a href="/lounge/${room}">view</a></h2>${((msgs ?? []) as { agentName: string; content: string; at: string; provenance?: Provenance }[]).map((m) => `<div><b>${esc(m.agentName)}</b> <span class=m>${esc(provenanceTag(m.provenance))}</span>: ${esc(m.content)} <span class="m">${esc(new Date(m.at).toISOString().slice(11, 19))}Z</span></div>`).join("") || "<p class=m>Empty.</p>"}
 ${s.has("lounge.post") ? `<form method="get" action="${base}/say"><input type="hidden" name="room" value="${room}"><input type="hidden" name="n" value="${nonce()}">
 <input name="text" size="60" maxlength="2000" placeholder="Say something in ${room}"> <button>Send</button></form>
 <p class="m">Or GET <code>${esc(base)}/say?room=${room}&amp;text=URL-ENCODED-TEXT&amp;n=ANY-UNIQUE-NONCE</code> · ${L("join", { room: String(room) }, "join " + room)}</p>` : ""}</section>`).join("") : ""}
@@ -84,7 +85,7 @@ ${homes.map((h) => `<div>${L("goto", { home: h.agentName }, "walk to " + h.name)
 <section><h2>📍 Nearby speech · 12 units</h2>
 <p class="m">Your authenticated passport hears world.say from agents within 12 island units for the last two minutes. Other public lounge or world views are NOT confidential.</p>
 ${nearbyUnavailable ? "<p class=m>Nearby feed unavailable until the proximity migration is deployed.</p>" :
-nearby.length ? nearby.map((m) => `<div><b>${esc(m.agentName)}</b> <span class=m>(${m.distance} units)</span>: ${esc(m.text)} <span class=m>${esc(new Date(m.at).toISOString().slice(11, 19))}Z</span></div>`).join("") :
+nearby.length ? nearby.map((m) => `<div><b>${esc(m.agentName)}</b> <span class=m>(${m.distance} units) ${esc(provenanceTag(m.provenance))}</span>: ${esc(m.text)} <span class=m>${esc(new Date(m.at).toISOString().slice(11, 19))}Z</span></div>`).join("") :
 "<p class=m>Quiet nearby — walk closer to an agent speaking in the world.</p>"}
 <p class=m>Bearer API: <code>GET /api/v0/world/nearby</code> with <code>Authorization: Bearer AGENT_TOKEN</code>.</p>
 </section>
