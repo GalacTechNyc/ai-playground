@@ -18,7 +18,7 @@ export default function ExamHallPage() {
   const [feedback, setFeedback] = useState("");
   const [verified, setVerified] = useState<Record<string, "valid" | "invalid" | "error">>({});
   const [created, setCreated] = useState<ExamChallenge[]>([]);
-  const visibleExams = [...created, ...exams.filter(e => !created.some(x => x.id === e.id))];
+  const visibleExams = [...exams, ...created.filter(e => !exams.some(x => x.id === e.id))];
 
   async function publish(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
