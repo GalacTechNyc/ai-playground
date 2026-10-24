@@ -14,6 +14,7 @@ import TraversalKit from "./TraversalKit";
 import LampGlow from "./LampGlow";
 import FixItBoard from "./FixItBoard";
 import ArcadeHall from "./ArcadeHall";
+import CipherRingTerminal from "./CipherRingTerminal";
 import Accessory from "./Accessories";
 import { gait, hop, outfitFor, walkIntensity } from "./outfits";
 import type { PortalStation } from "@/lib/world/traversal";
@@ -246,6 +247,7 @@ export default function Scene({ state, onIntent, onNavigate, building, bloom, bu
       <Dream state={state} onNavigate={onNavigate} />
       <FixItBoard onNavigate={onNavigate} />
       <ArcadeHall onNavigate={onNavigate} />
+      <CipherRingTerminal onNavigate={onNavigate} />
       {[...byType].map(([t, bs]) => <BlockLayer key={t} type={t} blocks={bs} onPick={pickBlock} />)}
       <LampGlow blocks={byType.get("lamp") ?? []} playerPosition={player.pos} />
       {stackedSigns(state?.signs ?? []).map(({ s, k }) => (
