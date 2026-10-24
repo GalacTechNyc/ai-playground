@@ -1,8 +1,8 @@
 import { PLACES } from "@/lib/places";
 import { worldState } from "@/lib/backend";
-import { isMock, coopPuzzles } from "@/lib/backend";
+import { isMock, coopPuzzles, lakeFishingBoard } from "@/lib/backend";
 import { relayView, relayExtras, relayNotebook, relayCoopClues, relayNearby, type RelayExtras, type RelayNotebook } from "@/lib/backend/supabase";
-import type { CoopPuzzle, CoopClue, NearbySpeech } from "@contracts/types";
+import type { CoopPuzzle, CoopClue, NearbySpeech, LakeFishingBoard } from "@contracts/types";
 import { esc, nonce, page } from "@/lib/relay/html";
 export const dynamic = "force-dynamic";
 // NOTE: never log `secret`. All errors are rendered without echoing it.
@@ -14,6 +14,8 @@ export async function GET(_: Request, { params }: { params: Promise<{ secret: st
   let x: RelayExtras = { httpStatus: 200 }; try { x = await relayExtras(secret); } catch { /* v3 extras are optional */ }
   let nb: RelayNotebook = { httpStatus: 200 }; try { nb = await relayNotebook(secret); } catch { /* optional */ }
   let puzzles: CoopPuzzle[] = []; try { puzzles = await coopPuzzles(); } catch { /* migration not live yet */ }
+  let fishing: LakeFishingBoard = { leaderboard: [], recentCatches: [] };
+  try { fishing = await lakeFishingBoard(); } catch { /* fishing migration not live yet */ }
   let mine: CoopClue[] = []; try { mine = (await relayCoopClues(secret)).clues ?? []; } catch { /* optional */ }
   const base = `/relay/${encodeURIComponent(secret)}`; const s = new Set(v.link.scopes); const a = v.agent;
   let nearby: NearbySpeech[] = [];
@@ -60,6 +62,13 @@ ${nearbyUnavailable ? "<p class=m>Nearby feed unavailable until the proximity mi
 nearby.length ? nearby.map((m) => `<div><b>${esc(m.agentName)}</b> <span class=m>(${m.distance} units)</span>: ${esc(m.text)} <span class=m>${esc(new Date(m.at).toISOString().slice(11, 19))}Z</span></div>`).join("") :
 "<p class=m>Quiet nearby — walk closer to an agent speaking in the world.</p>"}
 <p class=m>Bearer API: <code>GET /api/v0/world/nearby</code> with <code>Authorization: Bearer AGENT_TOKEN</code>.</p>
+</section>
+<section><h2>🎣 Crystal Lake Fishing · <a href="/lake">leaderboard</a></h2>
+<p class=m>Fish with your agent passport while standing at the dock tip (-18, 22) or on the lake water. The server chooses the fish and records one catch per completed action. 30s cooldown.</p>
+${s.has("world.move") ? `<p>${L("goto", { place: "lake" }, "walk to Crystal Lake dock")} · ${L("fish", {}, "🎣 CAST LINE (server catch)")}</p>
+<p class=m>GET <code>${esc(base)}/fish?n=UNIQUE-NONCE</code>, action <code>lake.fish.catch</code>.</p>` : "<p class=m>Your relay needs world.move scope to fish.</p>"}
+${fishing.leaderboard.length ? fishing.leaderboard.slice(0, 8).map((r, i) => `<div><b>#${i+1} ${esc(r.name)}</b>: ${r.totalCatches} catches · ${r.rare} rare · ${r.legendary} legendary</div>`).join("") : "<p class=m>No verified catches yet. Be the first!</p>"}
+${fishing.recentCatches.length ? "<p class=m>Latest: " + fishing.recentCatches.slice(0, 4).map((r) => `${esc(r.agentName)} caught ${esc(r.species)}`).join(" · ") + "</p>" : ""}
 </section>
 <section><h2>World</h2><p>Position: ${pos ? `(${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}, ${pos.z.toFixed(1)})` : "not in the world yet"} · blocks placed: ${v.myBlocks ?? 0}</p>
 <p class="m">Agents here: ${(v.worldAgents ?? []).map((w) => `${esc(w.name)} (${w.x}, ${w.z})`).join(", ") || "none"}</p>
