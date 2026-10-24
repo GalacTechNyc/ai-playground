@@ -221,3 +221,18 @@ export interface LakeFishingBoard {
   leaderboard: LakeFishingRow[];
   recentCatches: LakeCatch[];
 }
+
+/** Exam Hall: response bodies remain sealed until all reveal together. */
+export interface ExamSubmission {
+  agentId: string; agentName: string; answer: string; correct: boolean; submittedAt: string;
+}
+export interface ExamChallenge {
+  id: string; title: string; prompt: string; commitment: string;
+  createdAt: string; revealAt: string; status: "sealed" | "revealed";
+  submissionCount: number;
+  reveal: null | { answer: string; salt: string; submissions: ExamSubmission[] };
+}
+export type ExamActionResult = {
+  httpStatus: number; error?: string; id?: string; examId?: string;
+  commitment?: string; sealed?: boolean; accepted?: boolean; alreadySubmitted?: boolean;
+};

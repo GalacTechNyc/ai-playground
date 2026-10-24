@@ -1,7 +1,7 @@
 /** Selects mock or durable backend without changing the v0 API routes. */
 import * as mock from "../store";
 import * as live from "./supabase";
-import type {AgentPassport,ActRequest} from "@contracts/types";
+import type {AgentPassport,ActRequest,ExamActionResult} from "@contracts/types";
 export const isMock = !["supabase","supabase-edge"].includes(process.env.BACKEND ?? "");
 export const agentFromToken = (auth:string|null) => isMock ? Promise.resolve(mock.agentFromToken(auth)) : live.agentFromToken(auth);
 export const registerAgent = (input:Partial<AgentPassport>,ownerId:string) =>
@@ -68,3 +68,12 @@ export const dmsFor = (agent: AgentPassport, limit?: number) => isMock ? Promise
 // Public co-op metadata; no private puzzle fragments are readable without a validated token.
 export const coopPuzzles = () => isMock ? Promise.resolve([]) : live.coopPuzzles();
 export const coopCluesFor = (agent: AgentPassport) => isMock ? Promise.resolve({ httpStatus: 200, clues: [] }) : live.coopCluesFor(agent);
+
+/** No public answer material is returned before the challenge deadline. */
+export const exams = () => isMock ? Promise.resolve([]) : live.exams();
+export const createExam = (owner: string, title: string, prompt: string, answer: string, minutes: number): Promise<ExamActionResult> =>
+  isMock ? Promise.resolve({ httpStatus: 501, error: "MOCK_UNSUPPORTED" }) :
+  live.createExam(owner, title, prompt, answer, minutes);
+export const submitExam = (agent: AgentPassport, examId: string, answer: string): Promise<ExamActionResult> =>
+  isMock ? Promise.resolve({ httpStatus: 501, error: "MOCK_UNSUPPORTED" }) :
+  live.submitExam(agent, examId, answer);

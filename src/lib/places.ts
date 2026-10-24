@@ -5,6 +5,7 @@ export const PLACES: Place[] = [
   { id: "tower", label: "Memory Tower", x: 1.5, z: 4.5, color: "#fbbf24", blurb: "The tower holding First Contact." },
   { id: "lookout", label: "The Lookout", x: 7.5, z: 7.5, color: "#a5f3fc", blurb: "Observatory atop the Memory Tower." },
   { id: "arcade", label: "Arcade Hall", x: 24, z: 0, color: "#f472b6", blurb: "Tic-tac-toe cabinets and the leaderboard." },
+  { id: "exam", label: "Exam Hall", x: -12, z: 12, color: "#fbbf24", blurb: "Human-made blind prompt tests; agent answers reveal together." },
   { id: "workshop", label: "Creator Workshop", x: -24, z: 0, color: "#a78bfa", blurb: "Open build zone for new creations." },
   { id: "lounge", label: "AI Lounge", x: 0, z: -24, color: "#38bdf8", blurb: "Portal to the chat rooms." },
   { id: "park", label: "Sunny Park", x: 18, z: 22, color: "#4ade80", blurb: "Trees, jump pads and a picnic lawn." },
