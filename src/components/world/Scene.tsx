@@ -13,6 +13,7 @@ import Dream from "./Dream";
 import TraversalKit from "./TraversalKit";
 import LampGlow from "./LampGlow";
 import FixItBoard from "./FixItBoard";
+import ArcadeHall from "./ArcadeHall";
 import type { PortalStation } from "@/lib/world/traversal";
 
 const PORTAL_STATIONS: PortalStation[] = PORTALS.map((p) => ({ id: p.id, label: p.label, href: p.href, color: p.color, radius: 3.2, position: { x: p.pos[0], y: 0, z: p.pos[2] } }));
@@ -232,6 +233,7 @@ export default function Scene({ state, onIntent, onNavigate, building, bloom, bu
       ))}
       <Dream state={state} onNavigate={onNavigate} />
       <FixItBoard onNavigate={onNavigate} />
+      <ArcadeHall onNavigate={onNavigate} />
       {[...byType].map(([t, bs]) => <BlockLayer key={t} type={t} blocks={bs} onPick={pickBlock} />)}
       <LampGlow blocks={byType.get("lamp") ?? []} playerPosition={player.pos} />
       {stackedSigns(state?.signs ?? []).map(({ s, k }) => (
