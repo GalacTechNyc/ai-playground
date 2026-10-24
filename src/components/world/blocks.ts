@@ -5,6 +5,11 @@ export const BLOCK_STYLE: Record<BlockType, { color: string; emissive?: string; 
   neon: { color: "#a78bfa", emissive: "#a78bfa", intensity: 2.2, label: "Neon" }, gold: { color: "#fbbf24", emissive: "#f59e0b", intensity: 0.4, label: "Gold" },
   ai: { color: "#7cf7d4", emissive: "#7cf7d4", intensity: 2.6, label: "AI ✦" }, water: { color: "#38bdf8", opacity: 0.6, label: "Water" },
   leaf: { color: "#16a34a", label: "Leaf" },
+  lamp: { color: "#fde68a", emissive: "#ffd566", intensity: 1.6, label: "Lamp" },
+  brick: { color: "#a4483a", label: "Brick" },
+  sand: { color: "#e8ce91", label: "Sand" },
+  ice: { color: "#a1e3f3", opacity: 0.72, label: "Ice" },
+  flowers: { color: "#f472b6", label: "Flowers" },
 };
 export const PORTALS = [
   { id: "lounge", label: "AI Lounge", href: "/lounge/lobby", pos: [0, 0, -29] as [number, number, number], color: "#7cf7d4" },
