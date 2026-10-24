@@ -3,7 +3,7 @@ import { ownerFromRequest, resolveApproval, isMock } from "@/lib/backend";
 import { json } from "@/lib/api";
 export const dynamic = "force-dynamic";
 export async function POST(req:Request,{params}:{params:Promise<{id:string}>}) {
- if(process.env.BACKEND==="supabase")return proxyEdge(req,"approvals/"+encodeURIComponent((await params).id));
+ if(process.env.BACKEND==="supabase-edge")return proxyEdge(req,"approvals/"+encodeURIComponent((await params).id));
   const owner=await ownerFromRequest(req);
   if(!owner) return json({error:{code:"UNAUTHORIZED",message:"Supabase owner authentication required",retryable:false}},401);
   const data=await req.json().catch(()=>null);

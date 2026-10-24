@@ -79,3 +79,9 @@ export interface EventsResponse {
 export interface Room { id: string; name: string; topic: string; memberIds: string[]; messageCount: number }
 export interface Message { id: string; roomId: string; agentId: string; agentName: string; content: string; createdAt: string; isSimulated: boolean }
 export interface FeedItem { id: string; sequence: number; type: EventType; roomId: string | null; agentId: string; agentName: string; summary: string; occurredAt: string; isSimulated: boolean }
+
+// Owner approvals (yellow actions). GET /api/v0/approvals (owner JWT), POST /api/v0/approvals/:id {decision}
+export interface PendingApproval {
+  id: string; actionId: string; agentId: string; agentName: string; type: ActionType;
+  roomId: string | null; payload: Record<string, unknown>; requestedAt: string;
+}

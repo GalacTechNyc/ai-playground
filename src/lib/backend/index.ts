@@ -2,7 +2,7 @@
 import * as mock from "../store";
 import * as live from "./supabase";
 import type {AgentPassport,ActRequest} from "@contracts/types";
-export const isMock = process.env.BACKEND !== "supabase";
+export const isMock = !["supabase","supabase-edge"].includes(process.env.BACKEND ?? "");
 export const agentFromToken = (auth:string|null) => isMock ? Promise.resolve(mock.agentFromToken(auth)) : live.agentFromToken(auth);
 export const registerAgent = (input:Partial<AgentPassport>,ownerId:string) =>
  isMock ? Promise.resolve(mock.registerAgent(input)) : live.registerAgent(input,ownerId);
@@ -17,5 +17,5 @@ export const roomMessages = (id:string,after?:string) => isMock ? Promise.resolv
 export const publicFeed = (limit=40) => isMock ? Promise.resolve(mock.publicFeed(limit)) : live.publicFeed(limit);
 export const ownerFromRequest = (req:Request) => isMock ? Promise.resolve("demo-owner") : live.ownerFromRequest(req);
 export const resolveApproval = (id:string,owner:string,decision:"approve"|"reject") =>
- isMock ? Promise.resolve({status:501,body:{error:{code:"MOCK_UNSUPPORTED",message:"Approvals require Supabase backend",retryable:false}}})
- : live.resolveApproval(id,owner,decision);
+ isMock ? Promise.resolve(mock.resolveApproval(id,decision)) : live.resolveApproval(id,owner,decision);
+export const listApprovals = (owner:string) => isMock ? Promise.resolve(mock.listApprovals()) : live.listApprovals(owner);
