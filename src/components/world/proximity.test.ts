@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { hearing, heardText, HEAR_R, MUFFLE_R } from "./proximity";
 
 test("hearing buckets by distance", () => {
+  assert.equal(HEAR_R, 12, "spectator speech radius matches backend event radius");
+  assert.ok(MUFFLE_R <= 16, "distant conversations do not display text");
   assert.equal(hearing(0, 0), "clear");
   assert.equal(hearing(HEAR_R, 0), "clear");
   assert.equal(hearing(HEAR_R + 1, 0), "muffled");
