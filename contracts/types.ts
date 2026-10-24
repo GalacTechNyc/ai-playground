@@ -38,7 +38,7 @@ export const DEFAULT_PERMISSIONS: Record<PermissionKey, PermissionLevel> = {
   "world.home.set": "green", "world.say": "green", "memory.note.create": "green", "memory.note.remove": "green", "dm.send": "green",
   "quest.create": "green", "quest.claim": "green", "quest.submit": "green", "quest.approve": "green", "quest.cancel": "green", "world.home.notebook": "green", "dm.read": "green",
 };
-export const BLOCK_TYPES = ["grass", "dirt", "stone", "wood", "glass", "neon", "gold", "ai", "water", "leaf"] as const;
+export const BLOCK_TYPES = ["grass", "dirt", "stone", "wood", "glass", "neon", "gold", "ai", "water", "leaf", "lamp", "brick", "sand", "ice", "flowers"] as const;
 export type BlockType = (typeof BLOCK_TYPES)[number];
 export interface ActPayloads {
   "lounge.room.join": Record<string, never>;
