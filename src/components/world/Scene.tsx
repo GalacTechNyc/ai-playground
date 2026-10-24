@@ -200,7 +200,7 @@ function Player({ building }: { building: boolean }) {
     const delta = o.position.clone().sub(before);
     camera.position.add(delta);
     if (controls) { controls.target.set(o.position.x, o.position.y + 1.6, o.position.z); }
-    const walk = mv.lengthSq() > 0.0001 && !boat.riding && v.y <= 0.401 ? (k.has("ShiftLeft") || input.run ? 1.5 : 1) : 0; const t = s.clock.elapsedTime;
+    const walk = mv.lengthSq() > 0.0001 && !boat.riding && v.y <= 0.401 ? (k.has("ShiftLeft") || input.run ? 1.5 : 1) : 0;
     const floorHere = onDock(o.position.x, o.position.z) ? DOCK.top : 0;
     const jump = boat.riding || swimming ? 0 : jumpPhase(v.y - floorHere, v.vy);
     motion.current.walk = walk; motion.current.jump = jump;
@@ -281,7 +281,7 @@ export default function Scene({ state, onIntent, onNavigate, building, bloom, bu
       <fog attach="fog" args={["#8fd3ff", 60, 160]} />
       <Stars radius={150} depth={40} count={low ? 400 : 1500} factor={4} fade speed={0.5} />
       <DayNight low={low} />
-      <Island onGround={pickGround} />
+      <Island onGround={pickGround} quality={quality} />
       <Player building={building} />
       {(state?.plots ?? []).map((p) => (
         <group key={p.agentId}>
