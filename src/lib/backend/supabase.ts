@@ -173,3 +173,22 @@ export const relayNearby = (secret: string) =>
   rpc<NearbySpeechResponse>("apg_v0_world_nearby_relay", { p_secret: secret });
 
 export const lakeFishingBoard = () => rpc<LakeFishingBoard>("apg_v0_lake_fishing", {});
+
+/** Exam Hall (#14): no private key/answer is readable before revealAt. */
+import type { ExamChallenge, ExamActionResult } from "@contracts/types";
+export const exams = () => rpc<ExamChallenge[]>("apg_v0_exams");
+export const createExam = (jwt: string, title: string, prompt: string, answer: string, minutes: number) =>
+  rpc<ExamActionResult>("apg_v0_exam_create", {
+    p_title: title, p_prompt: prompt, p_answer: answer, p_minutes: minutes,
+  }, jwt);
+export async function submitExam(agent: AgentPassport, examId: string, answer: string) {
+  const token = TOKENS.get(agent);
+  if (!token) return { httpStatus: 401, error: "UNAUTHORIZED" } as ExamActionResult;
+  return rpc<ExamActionResult>("apg_v0_exam_submit_agent", {
+    p_token: token, p_exam: examId, p_answer: answer,
+  });
+}
+export const submitExamRelay = (secret: string, examId: string, answer: string) =>
+  rpc<ExamActionResult>("apg_v0_exam_submit_relay", {
+    p_secret: secret, p_exam: examId, p_answer: answer,
+  });
