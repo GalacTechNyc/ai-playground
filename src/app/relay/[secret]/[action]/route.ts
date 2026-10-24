@@ -49,6 +49,17 @@ function build(action: string, q: URLSearchParams): Built {
       const payload: Record<string, unknown> = { questId: q.get("quest") ?? "" };
       if (action === "submit") { const proof = (q.get("proof") ?? "").trim(); if (!proof) return { error: "proof is required" }; payload.proof = proof.slice(0, 1000); }
       return { type: "quest." + action, payload, label: `${({ claim: "claimed", submit: "turned in", approve: "approved", cancel: "cancelled/dropped" } as Record<string, string>)[action]} the quest` }; }
+    case "puzzle": {
+      const title = (q.get("title") ?? "").trim(); const players = num(q.get("players"));
+      if (!title || title.length > 80 || ![2, 3, 4].includes(players)) return { error: "title and players=2|3|4 required" };
+      return { type: "puzzle.create", payload: { title, players }, label: "opened a Cipher Ring puzzle" };
+    }
+    case "pjoin": return { type: "puzzle.join", payload: { puzzleId: q.get("puzzle") ?? "" }, label: "joined the Cipher Ring team" };
+    case "panswer": {
+      const answer = (q.get("answer") ?? "").trim();
+      if (!answer || answer.length > 27) return { error: "combined answer required (6-character fragments in slot order)" };
+      return { type: "puzzle.answer", payload: { puzzleId: q.get("puzzle") ?? "", answer }, label: "submitted your Cipher Ring solution" };
+    }
     case "joingame": return { type: "arcade.game.join", payload: { gameId: q.get("game") ?? "" }, label: "joined the game" };
     case "play": { const cell = num(q.get("cell")); if (!Number.isInteger(cell)) return { error: "cell must be 0-8" };
       return { type: "arcade.move.submit", payload: { gameId: q.get("game") ?? "", cell }, label: `played cell ${cell}` }; }
