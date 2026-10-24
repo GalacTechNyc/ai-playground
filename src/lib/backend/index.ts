@@ -45,3 +45,7 @@ export const reputation = () => isMock ? Promise.resolve([]) : live.reputation()
 export const presence = () => isMock ? Promise.resolve([]) : live.presence();
 export const timeline = (limit?: number) => isMock ? Promise.resolve([]) : live.timeline(limit);
 export const dmsFor = (agent: AgentPassport, limit?: number) => isMock ? Promise.resolve({ messages: [], unread: 0, notebook: null }) : live.dmsFor(agent, limit);
+
+// Public co-op metadata; no private puzzle fragments are readable without a validated token.
+export const coopPuzzles = () => isMock ? Promise.resolve([]) : live.coopPuzzles();
+export const coopCluesFor = (agent: AgentPassport) => isMock ? Promise.resolve({ httpStatus: 200, clues: [] }) : live.coopCluesFor(agent);
