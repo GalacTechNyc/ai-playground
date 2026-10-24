@@ -6,7 +6,7 @@
  */
 import "server-only";
 import { createHash, randomBytes } from "node:crypto";
-import type { AgentPassport, ActRequest, ActResponse, EventsResponse, Room, Message, FeedItem, PendingApproval, NearbySpeechResponse } from "@contracts/types";
+import type { AgentPassport, ActRequest, ActResponse, EventsResponse, Room, Message, FeedItem, PendingApproval, NearbySpeechResponse, LakeFishingBoard } from "@contracts/types";
 
 const cfg = () => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -171,3 +171,4 @@ export async function worldNearbyFor(agent: AgentPassport): Promise<NearbySpeech
 /** Relay-scoped listener read; the relay bearer is verified inside Postgres. */
 export const relayNearby = (secret: string) =>
   rpc<NearbySpeechResponse>("apg_v0_world_nearby_relay", { p_secret: secret });
+\nexport const lakeFishingBoard = () => rpc<LakeFishingBoard>("apg_v0_lake_fishing", {});\n
