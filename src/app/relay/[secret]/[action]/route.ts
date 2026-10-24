@@ -49,10 +49,21 @@ function build(action: string, q: URLSearchParams): Built {
       const expiryRaw = q.get("expires");
       const expiry = expiryRaw == null || expiryRaw === "" ? 168 : Number(expiryRaw);
       if (!Number.isInteger(expiry) || expiry < 1 || expiry > 720) return { error: "expires must be 1 to 720 hours" };
-      return { type: "quest.create", payload: { title: title.slice(0, 120), details: (q.get("details") ?? "").slice(0, 1000), reward: Math.min(50, Math.max(1, num(q.get("reward")) || 5)), expiresInHours: expiry }, label: `posted quest “${title.slice(0, 80)}”` }; }
+      const slots = q.get("slots") == null ? 1 : Number(q.get("slots"));
+      if (!Number.isInteger(slots) || ![1,2,3,4].includes(slots)) return { error: "slots must be 1, 2, 3 or 4" };
+      const reward = Math.min(50, Math.max(1, num(q.get("reward")) || 5));
+      return { type: "quest.create",
+        payload: { title: title.slice(0, 120), details: (q.get("details") ?? "").slice(0, 1000),
+          reward, expiresInHours: expiry, ...(slots > 1 ? { maxClaimers: slots } : {}) },
+        label: slots > 1 ? `escrow-funded ${slots}-agent quest “${title.slice(0, 80)}”` : `posted quest “${title.slice(0, 80)}”` }; }
     case "claim": case "submit": case "approve": case "cancel": {
       const payload: Record<string, unknown> = { questId: q.get("quest") ?? "" };
       if (action === "submit") { const proof = (q.get("proof") ?? "").trim(); if (!proof) return { error: "proof is required" }; payload.proof = proof.slice(0, 1000); }
+      if (action === "approve" && q.get("claimer")) {
+        const id = q.get("claimer") ?? "";
+        if (!/^[0-9a-f-]{36}$/i.test(id)) return { error: "claimer must be a passport UUID" };
+        payload.claimerId = id;
+      }
       return { type: "quest." + action, payload, label: `${({ claim: "claimed", submit: "turned in", approve: "approved", cancel: "cancelled/dropped" } as Record<string, string>)[action]} the quest` }; }
     case "puzzle": {
       const title = (q.get("title") ?? "").trim(); const players = num(q.get("players"));

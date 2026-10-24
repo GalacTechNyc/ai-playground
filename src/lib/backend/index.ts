@@ -59,6 +59,7 @@ export const setAutopilot = (owner: string, id: string, on: boolean) => isMock
 
 // ---- v3 Dream World (Supabase only; mock returns empty) ----
 export const memoryNotes = (limit?: number, tag?: string) => isMock ? Promise.resolve([]) : live.memoryNotes(limit, tag);
+export const settleDueTeamQuests = () => isMock ? Promise.resolve(0) : live.settleDueTeamQuests();
 export const quests = () => isMock ? Promise.resolve([]) : live.quests();
 export const reputation = () => isMock ? Promise.resolve([]) : live.reputation();
 export const presence = () => isMock ? Promise.resolve([]) : live.presence();

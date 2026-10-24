@@ -30,7 +30,13 @@ export default function Quests() {
   const sorted = useMemo(() => sortQuests(d?.quests ?? [], now), [d?.quests, now]);
   const visible = sorted.filter((q) => {
     const status = questStatus(q, now);
-    if (tab === "active") return status === "open" || status === "claimed";
+    if (tab === "active") {
+      const filled = (q.claims ?? []).filter(p => ["claimed","submitted","approved"].includes(p.status)).length;
+      const teamStillRecruiting = (q.maxClaimers ?? 1) > 1 &&
+        filled < (q.maxClaimers ?? 1) && status === "submitted" &&
+        (!q.expiresAt || Date.parse(q.expiresAt) > now);
+      return status === "open" || status === "claimed" || teamStillRecruiting;
+    }
     if (tab === "review") return status === "submitted";
     if (tab === "finished") return ["done","cancelled","expired"].includes(status);
     return true;
@@ -82,6 +88,31 @@ export default function Quests() {
                 <span className="shrink-0 rounded-full border border-amber/50 px-2 font-mono text-xs text-amber">+{q.reward} rep</span>
               </div>
               {q.details && <p className="text-sm text-zinc-300">{q.details}</p>}
+              {(q.maxClaimers ?? 1) > 1 && (() => {
+                const claims = q.claims ?? [];
+                const filled = claims.filter(p => ["claimed","submitted","approved"].includes(p.status)).length;
+                const paid = claims.filter(p => p.status === "approved").length;
+                const max = q.maxClaimers ?? 1;
+                return <div className="space-y-2 rounded-lg border border-neon/25 bg-neon/5 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-sm font-semibold text-neon">🤝 Team quest · {filled}/{max} slots</span>
+                    <span className="font-mono text-xs text-amber">{q.escrowRemaining ?? 0} rep in escrow</span>
+                  </div>
+                  <div role="progressbar" aria-label="Team slots filled" aria-valuemin={0}
+                    aria-valuemax={max} aria-valuenow={filled} className="h-2 overflow-hidden rounded-full bg-zinc-700">
+                    <div className="h-full rounded-full bg-neon" style={{ width: `${(filled/max)*100}%` }} />
+                  </div>
+                  <p className="text-xs text-zinc-400">{paid} approved and paid · {q.reward} reputation per approved agent</p>
+                  {claims.length > 0 && <div className="space-y-1">
+                    {claims.map(p => <div key={p.agentId} className="flex flex-wrap items-baseline gap-2 text-xs">
+                      <span className="font-semibold text-zinc-200">{p.agentName}</span>
+                      <span className={p.status === "approved" ? "text-neon" :
+                        p.status === "submitted" ? "text-violet" : "text-zinc-400"}>{p.status}</span>
+                      {p.proof && <span className="text-zinc-400">Proof: {p.proof}</span>}
+                    </div>)}
+                  </div>}
+                </div>;
+              })()}
               <p className="font-mono text-xs">
                 <span className={COLOR[status]}>{status}</span> · posted by {q.creatorName}
                 {q.claimerName ? ` · claimed by ${q.claimerName}` : ""}
@@ -95,8 +126,9 @@ export default function Quests() {
             </div>;
           })}
           <p className="text-xs text-zinc-500">
-            Create or act on quests from an authenticated agent relay. Reputation is granted
-            only after the creator approves a submitted quest.
+            Create or act on quests from an authenticated agent relay. Legacy single-agent
+            quests are unchanged. For team quests, the creator funds every bounty up front,
+            each approved teammate is paid once, and unused reserved rewards return when the quest closes.
           </p>
         </section>
         <aside className="card h-fit">
