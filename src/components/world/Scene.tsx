@@ -4,7 +4,7 @@ import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber"
 import { Billboard, OrbitControls, Text, Sparkles, Stars } from "@react-three/drei";
 import { EffectComposer, Bloom, Vignette } from "@react-three/postprocessing";
 import * as THREE from "three";
-import type { BlockType, WorldAgent, WorldBlock, WorldSign, WorldState } from "@contracts/types";
+import type { BlockType, WorldAgent, WorldBlock, WorldState } from "@contracts/types";
 import { BLOCK_STYLE, PORTALS, agentHue, blockStyle } from "./blocks";
 import Island, { ISLAND_R } from "./Island";
 import { INTERACTABLES } from "./interactables";
@@ -12,6 +12,7 @@ import { input, player } from "./controls";
 import Dream from "./Dream";
 import TraversalKit from "./TraversalKit";
 import LampGlow from "./LampGlow";
+import SignLayer from "./SignLayer";
 import FixItBoard from "./FixItBoard";
 import ArcadeHall from "./ArcadeHall";
 import CipherRingTerminal from "./CipherRingTerminal";
@@ -249,17 +250,6 @@ function Portal({ p, onEnter }: { p: (typeof PORTALS)[number]; onEnter: (href: s
   );
 }
 
-/** Signs that sit within ~1.5 units of each other stack upward instead of overlapping (v2 rough spot). */
-function stackedSigns(signs: WorldSign[]) {
-  const placed: { s: WorldSign; k: number }[] = [];
-  for (const s of [...signs].sort((a, b) => a.y - b.y || a.id.localeCompare(b.id))) {
-    const w = (t: WorldSign) => Math.max(2, Math.min(t.text.length, 36) * 0.32);
-    let k = 0; while (placed.some((p) => p.k === k && Math.hypot(p.s.x - s.x, p.s.z - s.z) < (w(p.s) + w(s)) / 2 + 0.3 && Math.abs(p.s.y - s.y) < 1)) k++;
-    placed.push({ s, k });
-  }
-  return placed;
-}
-
 export type Quality = "high" | "low";
 
 export default function Scene({ state, onIntent, onNavigate, building, bloom, bubbles, avatarBadges, quality = "high" }: {
@@ -298,12 +288,7 @@ export default function Scene({ state, onIntent, onNavigate, building, bloom, bu
       <LakeBoard onNavigate={onNavigate} />
       {[...byType].map(([t, bs]) => <BlockLayer key={t} type={t} blocks={bs} onPick={pickBlock} />)}
       <LampGlow blocks={byType.get("lamp") ?? []} playerPosition={player.pos} />
-      {stackedSigns(state?.signs ?? []).map(({ s, k }) => (
-        <Billboard key={s.id} position={[s.x, s.y + 0.6 + k * 1.0, s.z]}>
-          <mesh position={[0, 0, -0.01]}><planeGeometry args={[Math.max(2, Math.min(s.text.length, 36) * 0.32), 0.7 + Math.floor((s.text.length - 1) / 36) * 0.45]} /><meshBasicMaterial color="#0f0d1a" transparent opacity={0.85} /></mesh>
-          <Text fontSize={0.38} color="#7cf7d4" maxWidth={11.5} textAlign="center" anchorX="center" anchorY="middle">{s.text}</Text>
-        </Billboard>
-      ))}
+      <SignLayer signs={state?.signs ?? []} quality={quality} />
       {PORTALS.map((p) => <Portal key={p.id} p={p} onEnter={onNavigate} />)}
       <TraversalKit playerPosition={player.pos} enabled={!building} showPortals={false} portals={PORTAL_STATIONS}
         onLaunch={(_, impulse) => { player.impulse = { ...impulse }; }} onEnterPortal={(portal) => onNavigate(portal.href)} />
