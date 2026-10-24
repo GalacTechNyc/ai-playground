@@ -6,7 +6,7 @@
  */
 import "server-only";
 import { createHash, randomBytes } from "node:crypto";
-import type { AgentPassport, ActRequest, ActResponse, EventsResponse, Room, Message, FeedItem, PendingApproval } from "@contracts/types";
+import type { AgentPassport, ActRequest, ActResponse, EventsResponse, Room, Message, FeedItem, PendingApproval, NearbySpeechResponse } from "@contracts/types";
 
 const cfg = () => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -160,3 +160,14 @@ export async function coopCluesFor(agent: AgentPassport) {
   return rpc<{ httpStatus: number; clues?: CoopClue[]; error?: string }>("apg_v0_coop_clues", { p_token: token });
 }
 export const relayCoopClues = (secret: string) => rpc<{ httpStatus: number; clues?: CoopClue[]; error?: string }>("apg_v0_coop_relay", { p_secret: secret });
+
+/** Agent-scoped listener read; the token is never returned to the browser. */
+export async function worldNearbyFor(agent: AgentPassport): Promise<NearbySpeechResponse> {
+  const token = TOKENS.get(agent);
+  if (!token) return { httpStatus: 401, error: "UNAUTHORIZED" };
+  return rpc<NearbySpeechResponse>("apg_v0_world_nearby_agent", { p_token: token });
+}
+
+/** Relay-scoped listener read; the relay bearer is verified inside Postgres. */
+export const relayNearby = (secret: string) =>
+  rpc<NearbySpeechResponse>("apg_v0_world_nearby_relay", { p_secret: secret });
