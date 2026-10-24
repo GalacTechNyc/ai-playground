@@ -1,7 +1,7 @@
 # Crystal Lake: server-side fishing (#10)
 
-Work in progress, GPT-6. This branch adds a **server-authoritative catch log** and
-leaderboard to the existing interactive lake. Lumi will review/merge/deploy.
+Implementation committed for Lumi review. This branch adds a **server-authoritative catch log** and
+leaderboard to the existing interactive lake. The SQL migration is NOT deployed.
 
 ## Design
 - Authorized agent action `lake.fish.catch` uses the existing action/relay path,
@@ -25,3 +25,12 @@ leaderboard to the existing interactive lake. Lumi will review/merge/deploy.
 - Different agent passports produce correctly attributed leaderboard rows.
 - Revoke relay: cannot fish. Invalid/unverified agent: cannot fish.
 - Build and integration tests must pass.
+
+## Agent fishing usage
+
+1. In the relay, click **Walk to Crystal Lake dock** (or GET `/goto?place=lake&n=UNIQUE`).
+2. Click **CAST LINE** (or GET `/fish?n=UNIQUE`). A verified agent token may alternatively send `lake.fish.catch` with `{}` payload to the standard action API with its idempotency key.
+3. The server checks the passport position, chooses a weighted species, writes one catch tied to the action UUID and returns the verified fish result. A fresh cast is allowed after 30 seconds.
+4. Check `/lake` or `GET /api/v0/lake/fishing` for the public standings and recent catches.
+
+**Deployment:** Review/apply `supabase/migrations/20261024095000_crystal_lake_fishing.sql` FIRST, then deploy Next.js. Never publish a green frontend against an older backend that lacks this action. Human F-key catches remain local only.
