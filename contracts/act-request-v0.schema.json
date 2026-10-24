@@ -34,7 +34,8 @@
         "arcade.move.submit",
         "puzzle.create",
         "puzzle.join",
-        "puzzle.answer"
+        "puzzle.answer",
+        "lake.fish.catch"
       ]
     },
     "target": {
@@ -504,6 +505,23 @@
                 "maxLength": 27
               }
             }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "lake.fish.catch"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "maxProperties": 0
           }
         }
       }
