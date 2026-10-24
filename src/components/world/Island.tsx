@@ -7,6 +7,7 @@ import { PLACES } from "@/lib/places";
 
 export const ISLAND_R = 50;
 import { INTERACTABLES } from "./interactables";
+import { FLOWER_COLORS, scatter, type Scatter } from "./meadow";
 const rand = (i: number) => { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
 const nearPath = (x: number, z: number) => PLACES.some((p) => {
   const L = Math.hypot(p.x, p.z); if (L < 1) return false; const t = Math.max(0, Math.min(1, (x * p.x + z * p.z) / (L * L)));
@@ -21,6 +22,39 @@ export const TREES: [number, number, number][] = (() => {
   }
   return out;
 })();
+
+const FLOWERS = scatter(180, 1, TREES, 0.9, FLOWER_COLORS.length);
+const BUSHES = scatter(36, 2, TREES, 2.4);
+const ROCKS = scatter(24, 3, TREES, 2.6);
+const trunkY = (s: number) => s, crownY = (s: number) => 3.3 * s;
+
+/** One instanced mesh per scatter layer; optional per-instance colors. */
+function ScatterLayer({ items, geo, y, scale = 1, color, palette, flat = true }: { items: Scatter[]; geo: THREE.BufferGeometry; y: number; scale?: number; color?: string; palette?: readonly string[]; flat?: boolean }) {
+  const ref = useRef<THREE.InstancedMesh>(null);
+  useEffect(() => {
+    const m = ref.current; if (!m) return; const o = new THREE.Object3D(); const c = new THREE.Color();
+    items.forEach((it, i) => {
+      o.position.set(it.x, y * it.s * scale, it.z); o.rotation.set(0, it.rot, 0); o.scale.setScalar(it.s * scale); o.updateMatrix(); m.setMatrixAt(i, o.matrix);
+      if (palette) m.setColorAt(i, c.set(palette[it.color % palette.length]));
+    });
+    m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; m.computeBoundingSphere();
+  }, [items, y, scale, palette]);
+  return <instancedMesh ref={ref} args={[geo, undefined, Math.max(items.length, 1)]} castShadow={!palette} receiveShadow>
+    <meshStandardMaterial color={palette ? "#ffffff" : color} flatShading={flat} roughness={0.8} /></instancedMesh>;
+}
+
+function Meadow() {
+  const stem = useMemo(() => new THREE.CylinderGeometry(0.03, 0.03, 0.5, 4), []);
+  const bloom = useMemo(() => new THREE.IcosahedronGeometry(0.16, 0), []);
+  const bush = useMemo(() => new THREE.IcosahedronGeometry(0.75, 0), []);
+  const rock = useMemo(() => new THREE.DodecahedronGeometry(0.55, 0), []);
+  return <group>
+    <ScatterLayer items={FLOWERS} geo={stem} y={0.25} color="#15803d" />
+    <ScatterLayer items={FLOWERS} geo={bloom} y={0.55} palette={FLOWER_COLORS} />
+    <ScatterLayer items={BUSHES} geo={bush} y={0.45} color="#16a34a" />
+    <ScatterLayer items={ROCKS} geo={rock} y={0.2} color="#94a3b8" />
+  </group>;
+}
 
 function Instanced({ items, geo, color, emissive, y }: { items: [number, number, number][]; geo: THREE.BufferGeometry; color: string; emissive?: string; y: (s: number) => number }) {
   const ref = useRef<THREE.InstancedMesh>(null);
@@ -81,8 +115,10 @@ export default function Island({ onGround }: { onGround: (e: ThreeEvent<PointerE
         <gridHelper args={[14, 14, "#a78bfa", "#c4b5fd"]} position={[0, 0.12, 0]} />
       </group>
       {/* trees (instanced) */}
-      <Instanced items={TREES} geo={trunk} color="#8b5a2b" y={(s) => s} />
-      <Instanced items={TREES} geo={crown} color="#22a34a" y={(s) => 2 * s + 1.3 * s} />
+      <Instanced items={TREES} geo={trunk} color="#8b5a2b" y={trunkY} />
+      <Instanced items={TREES} geo={crown} color="#22a34a" y={crownY} />
+      {/* wildflowers, bushes and rocks on open grass (instanced) */}
+      <Meadow />
       {INTERACTABLES.filter((i) => i.kind === "jumpPad").map((i) => <JumpPad key={i.id} x={i.x} z={i.z} />)}
       {PLACES.filter((p) => p.id !== "tower" && p.id !== "lookout").map((p) => (
         <Billboard key={p.id} position={[p.x, p.id === "arcade" || p.id === "workshop" || p.id === "lounge" ? 9 : p.id === "spawn" ? 6.5 : 3.2, p.id === "spawn" ? -9 : p.z]}>
