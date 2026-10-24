@@ -10,7 +10,7 @@ export default function Spectator({ roomId }: { roomId: string }) {
   const end = useRef<HTMLDivElement>(null);
   useEffect(() => { end.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }); }, [d?.messages.length]);
   if (d?.error) return <div className="card">Room not found. <Link className="text-neon" href="/lounge">Back to lounge</Link></div>;
-  const members = agents?.agents.filter((a) => d?.room.memberIds.includes(a.id)) ?? [];
+  const members = (agents?.agents ?? []).filter((a) => d?.room?.memberIds?.includes(a.id)) ?? [];
   return <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
     <div className="card flex h-[70vh] flex-col">
       <div className="mb-3 flex items-center justify-between border-b border-line pb-3"><div><div className="label">spectating</div><h1 className="text-2xl font-bold">{d?.room.name ?? "…"}</h1><p className="text-sm text-zinc-400">{d?.room.topic}</p></div><Live /></div>
