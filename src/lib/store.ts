@@ -1,14 +1,14 @@
 // In-memory MOCK backend. ChatGPT replaces this with Supabase (see CONTRIBUTING.md).
 // State lives on globalThis so it survives hot reloads; it resets on server restart / cold start.
 import { randomUUID } from "crypto";
-import type { AgentPassport, ActRequest, ActResponse, PlaygroundEvent, EventType, Room, Message, FeedItem } from "@contracts/types";
+import type { AgentPassport, ActRequest, ActResponse, PlaygroundEvent, EventType, Room, Message, FeedItem, PendingApproval } from "@contracts/types";
 
 interface Action { requestId: string; agentId: string; bodyHash: string; response: ActResponse }
 interface State {
   agents: Map<string, AgentPassport>; tokens: Map<string, string>;
   rooms: Map<string, { id: string; name: string; topic: string; members: Set<string> }>;
   messages: Message[]; events: (PlaygroundEvent & { agentId: string; audience: string[] | "all" })[];
-  actions: Map<string, Action>; seq: number; lastSimTick: number; simIndex: number;
+  actions: Map<string, Action>; approvals: Map<string, PendingApproval & { req: ActRequest; key: string }>; seq: number; lastSimTick: number; simIndex: number;
 }
 const g = globalThis as unknown as { __pg?: State };
 
@@ -38,7 +38,7 @@ function makeAgent(p: Partial<AgentPassport> & { name: string }): AgentPassport 
 
 export function db(): State {
   if (g.__pg) return g.__pg;
-  const s: State = { agents: new Map(), tokens: new Map(), rooms: new Map(), messages: [], events: [], actions: new Map(), seq: 0, lastSimTick: 0, simIndex: 0 };
+  const s: State = { agents: new Map(), tokens: new Map(), rooms: new Map(), messages: [], events: [], actions: new Map(), approvals: new Map(), seq: 0, lastSimTick: 0, simIndex: 0 };
   g.__pg = s;
   for (const [id, name, topic] of [["lobby", "The Lobby", "First contact. Say hello."], ["ideas", "Idea Lab", "Brainstorm what the playground should become."], ["chill", "Late Night", "Low-key conversation."]])
     s.rooms.set(id, { id, name, topic, members: new Set() });
@@ -70,9 +70,9 @@ export function registerAgent(input: Partial<AgentPassport>): { passport: AgentP
   return { passport: p, token };
 }
 
-export function act(agent: AgentPassport, req: ActRequest): { status: number; body: ActResponse } {
+export function act(agent: AgentPassport, req: ActRequest, approved = false): { status: number; body: ActResponse } {
   const s = db(); const key = `${agent.id}:${req.requestId}`; const hash = JSON.stringify([req.type, req.target, req.payload]);
-  const prior = s.actions.get(key);
+  const prior = approved ? undefined : s.actions.get(key);
   const base = { version: "v0" as const, requestId: req.requestId, type: req.type, occurredAt: now() };
   if (prior) {
     if (prior.bodyHash !== hash) return { status: 409, body: { ...base, actionId: null, status: "rejected", result: null, error: { code: "IDEMPOTENCY_CONFLICT", message: "requestId reused with different body", retryable: false } } };
@@ -81,13 +81,15 @@ export function act(agent: AgentPassport, req: ActRequest): { status: number; bo
   const fail = (status: number, code: string, message: string) => ({ status, body: { ...base, actionId: null, status: "failed" as const, result: null, error: { code, message, retryable: false } } });
   const room = s.rooms.get(req.target?.roomId);
   if (!room) return fail(404, "ROOM_NOT_FOUND", "Unknown roomId");
-  const level = agent.permissions[req.type];
+  const level = approved ? "green" : agent.permissions[req.type];
   if (level === "red") return fail(403, "PERMISSION_DENIED", `${req.type} is red for this agent`);
   const actionId = randomUUID();
   let res: ActResponse; let code = 201;
   if (level === "yellow") {
     res = { ...base, actionId, status: "pending_approval", result: null, error: null }; code = 202;
-    emit(agent.id, "action.approval.requested", room.id, actionId, { type: req.type, agentName: agent.name }, [agent.id]);
+    const approvalId = randomUUID();
+    s.approvals.set(approvalId, { id: approvalId, actionId, agentId: agent.id, agentName: agent.name, type: req.type, roomId: room.id, payload: req.payload as Record<string, unknown>, requestedAt: now(), req, key });
+    emit(agent.id, "action.approval.requested", room.id, actionId, { type: req.type, agentName: agent.name, approvalId }, [agent.id]);
   } else if (req.type === "lounge.room.join") {
     const already = room.members.has(agent.id); room.members.add(agent.id);
     res = { ...base, actionId, status: "completed", result: { roomId: room.id, joined: true, alreadyMember: already }, error: null };
@@ -137,4 +139,25 @@ export function publicFeed(limit = 40): FeedItem[] {
     const summary = e.type === "lounge.message.created" ? `said in ${room}: “${String(e.payload.content).slice(0, 120)}”` : e.type === "lounge.member.joined" ? `joined ${room}` : e.type;
     return { id: e.id, sequence: e.sequence, type: e.type, roomId: e.roomId, agentId: e.agentId, agentName: a?.name ?? "?", summary, occurredAt: e.occurredAt, isSimulated: !!a?.isSimulated };
   });
+}
+
+/** Mock owner approvals: every pending approval belongs to the single mock owner. */
+export function listApprovals(): PendingApproval[] {
+  return [...db().approvals.values()].map(({ req: _r, key: _k, ...a }) => a);
+}
+export function resolveApproval(id: string, decision: "approve" | "reject") {
+  const s = db(); const ap = s.approvals.get(id);
+  if (!ap) return { status: 404, body: { error: { code: "APPROVAL_NOT_FOUND", message: "Unknown or already resolved approval", retryable: false } } };
+  s.approvals.delete(id);
+  const agent = s.agents.get(ap.agentId)!;
+  if (decision === "reject") {
+    const prior = s.actions.get(ap.key)!;
+    const res: ActResponse = { ...prior.response, status: "rejected", error: { code: "APPROVAL_REJECTED", message: "Owner rejected this action", retryable: false }, occurredAt: now() };
+    prior.response = res;
+    emit(agent.id, "action.rejected", ap.roomId, ap.actionId, { type: ap.type }, [agent.id]);
+    return { status: 200, body: res };
+  }
+  const { body } = act(agent, ap.req, true);
+  const prior = s.actions.get(ap.key)!; prior.response = { ...body, actionId: ap.actionId }; prior.bodyHash = JSON.stringify([ap.req.type, ap.req.target, ap.req.payload]);
+  return { status: 200, body: prior.response };
 }

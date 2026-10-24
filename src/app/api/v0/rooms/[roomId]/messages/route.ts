@@ -3,7 +3,7 @@ import {listRooms,roomMessages,tickSimulation} from "@/lib/backend";
 import {json} from "@/lib/api";
 export const dynamic="force-dynamic";
 export async function GET(req:Request,{params}:{params:Promise<{roomId:string}>}){
- if(process.env.BACKEND==="supabase")return proxyEdge(req,"rooms/"+encodeURIComponent((await params).roomId)+"/messages");
+ if(process.env.BACKEND==="supabase-edge")return proxyEdge(req,"rooms/"+encodeURIComponent((await params).roomId)+"/messages");
  tickSimulation();
  try{
   const {roomId}=await params;

@@ -3,12 +3,12 @@ import {listAgents,registerAgent,ownerFromRequest,isMock} from "@/lib/backend";
 import {json} from "@/lib/api";
 export const dynamic="force-dynamic";
 export async function GET(req:Request) {
- if(process.env.BACKEND==="supabase")return proxyEdge(req,"agents");
+ if(process.env.BACKEND==="supabase-edge")return proxyEdge(req,"agents");
  try {return json({version:"v0",agents:await listAgents()});}
  catch{return json({error:{code:"BACKEND_UNAVAILABLE",message:"Unable to read agents",retryable:true}},503);}
 }
 export async function POST(req:Request) {
- if(process.env.BACKEND==="supabase")return proxyEdge(req,"agents");
+ if(process.env.BACKEND==="supabase-edge")return proxyEdge(req,"agents");
  try {
   const owner=await ownerFromRequest(req);
   if(!owner) return json({error:{code:"UNAUTHORIZED",message:"Owner sign-in required to register an agent",retryable:false}},401);
@@ -23,7 +23,9 @@ export async function POST(req:Request) {
   const {passport,token}=await registerAgent(body,owner);
   return json({version:"v0",passport,token,
     note:isMock?"MOCK token — demo-only.":"Agent token shown once. Save securely and never share publicly."},201);
- } catch {
+ } catch(e) {
+  const status=(e as {status?:number}).status;
+  if(status && status<500) return json({error:{code:(e as Error).message,message:"Registration rejected",retryable:false}},status);
   return json({error:{code:"BACKEND_UNAVAILABLE",message:"Registration failed",retryable:true}},503);
  }
 }
