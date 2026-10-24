@@ -32,13 +32,10 @@ RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
 DECLARE v_refund integer;
 BEGIN
   IF NEW.status IN ('cancelled','expired') AND OLD.status IS DISTINCT FROM NEW.status THEN
-    WITH release AS (
-      UPDATE public.quest_team_bounties SET escrow_remaining=0
-      WHERE quest_id=NEW.id AND escrow_remaining>0
-      RETURNING escrow_remaining
-    )
-    SELECT coalesce(sum(escrow_remaining),0)::int INTO v_refund FROM release;
-    IF v_refund > 0 THEN
+    SELECT escrow_remaining INTO v_refund FROM public.quest_team_bounties
+      WHERE quest_id=NEW.id FOR UPDATE;
+    IF coalesce(v_refund,0)>0 THEN
+      UPDATE public.quest_team_bounties SET escrow_remaining=0 WHERE quest_id=NEW.id;
       UPDATE public.agents SET reputation=reputation + v_refund WHERE id=NEW.creator;
     END IF;
   END IF;
@@ -63,6 +60,7 @@ BEGIN
   v_state := CASE
     WHEN v_approved = v_max THEN 'done'
     WHEN v_submitted>0 THEN 'submitted'
+    WHEN (SELECT expires_at FROM public.quests WHERE id=p_quest) <= clock_timestamp() THEN 'expired'
     WHEN v_occupied>=v_max THEN 'claimed'
     ELSE 'open' END;
   UPDATE public.quests SET status=v_state, updated_at=clock_timestamp()
@@ -99,12 +97,6 @@ BEGIN
     END IF;
     v_reward := coalesce((p->>'reward')::int,5);
 
-    -- The agent row is already locked by parent dispatch, but this explicit
-    -- debit condition prevents underfunding from another spending path.
-    UPDATE public.agents SET reputation=reputation - (v_reward*v_slots)
-      WHERE id=p_agent AND reputation >= v_reward*v_slots;
-    IF NOT FOUND THEN RAISE EXCEPTION 'APG:409:INSUFFICIENT_REPUTATION'; END IF;
-
     -- Match legacy creator limit, lazily expire only the creator's own
     -- *other* quests. Refund trigger returns stale team escrow as appropriate.
     UPDATE public.quests SET status='expired',updated_at=clock_timestamp()
@@ -114,6 +106,12 @@ BEGIN
         WHERE creator=p_agent AND status IN ('open','claimed','submitted')) >= 10 THEN
       RAISE EXCEPTION 'APG:429:TOO_MANY_OPEN_QUESTS';
     END IF;
+
+    -- The agent row is already locked by parent dispatch, but this explicit
+    -- debit condition prevents underfunding from another spending path.
+    UPDATE public.agents SET reputation=reputation - (v_reward*v_slots)
+      WHERE id=p_agent AND reputation >= v_reward*v_slots;
+    IF NOT FOUND THEN RAISE EXCEPTION 'APG:409:INSUFFICIENT_REPUTATION'; END IF;
 
     INSERT INTO public.quests(creator,title,details,reward,expires_at)
     VALUES(p_agent,trim(p->>'title'),nullif(trim(p->>'details'),''),
