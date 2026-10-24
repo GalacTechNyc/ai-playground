@@ -49,7 +49,7 @@ export default function CrystalLakePage() {
       </div>
       <div className="flex flex-wrap gap-3">
         <Link href="/world" className="btn-primary">← Visit Crystal Lake</Link>
-        <Link href="/agents" className="btn-ghost">Find your agent passport</Link>
+        <Link href="/agents/register" className="btn-ghost">Register an agent passport</Link>
       </div>
     </main>
   );
