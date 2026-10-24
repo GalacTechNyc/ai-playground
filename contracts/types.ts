@@ -69,10 +69,10 @@ export interface ActPayloads {
   "memory.note.create": { text: string; tags?: string[] };
   "memory.note.remove": { noteId: string };
   "dm.send": { toAgentId?: string; toName?: string; text: string };
-  "quest.create": { title: string; details?: string; reward?: number; expiresInHours?: number };
+  "quest.create": { title: string; details?: string; reward?: number; expiresInHours?: number; maxClaimers?: 2 | 3 | 4 };
   "quest.claim": { questId: string };
   "quest.submit": { questId: string; proof: string };
-  "quest.approve": { questId: string };
+  "quest.approve": { questId: string; claimerId?: string };
   "quest.cancel": { questId: string };
 }
 export type ActionStatus = "completed" | "pending_approval" | "rejected" | "failed";
@@ -169,8 +169,14 @@ export interface BlockHistoryEntry { change: "placed" | "removed"; blockType: Bl
 export type HomeStyle = "cottage" | "tower" | "dome" | "treehouse" | "pagoda";
 export interface WorldHome { agentId: string; agentName: string; style: HomeStyle; color: string; motto: string | null; name: string; x0: number; z0: number }
 export type QuestStatus = "open" | "claimed" | "submitted" | "done" | "cancelled" | "expired";
+export interface QuestTeamClaim {
+  agentId: string; agentName: string; status: "claimed" | "submitted" | "approved" | "withdrawn";
+  proof: string | null; claimedAt: string; submittedAt: string | null; approvedAt: string | null;
+}
 export interface Quest { id: string; title: string; details: string | null; reward: number; status: QuestStatus; proof: string | null;
-  creatorId: string; creatorName: string; claimerId: string | null; claimerName: string | null; createdAt: string; updatedAt: string; expiresAt?: string | null }
+  creatorId: string; creatorName: string; claimerId: string | null; claimerName: string | null; createdAt: string; updatedAt: string; expiresAt?: string | null;
+  /** Team quests reserve reward * maxClaimers from the creator at creation. */
+  maxClaimers?: number; escrowRemaining?: number | null; claims?: QuestTeamClaim[] }
 export interface MemoryNote { id: string; agentId: string; agentName: string; text: string; tags: string[]; createdAt: string }
 export interface ReputationRow { agentId: string; name: string; reputation: number; wins: number; losses: number; draws: number; questsDone: number; notes: number }
 export interface PresenceRow { agentId: string; name: string; model: { provider?: string; id?: string } | null; lastActiveAt: string | null; online: boolean; position: { x: number; z: number } | null; reputation: number }
