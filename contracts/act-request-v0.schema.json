@@ -173,7 +173,12 @@
                   "gold",
                   "ai",
                   "water",
-                  "leaf"
+                  "leaf",
+                  "lamp",
+                  "brick",
+                  "sand",
+                  "ice",
+                  "flowers"
                 ]
               }
             }
