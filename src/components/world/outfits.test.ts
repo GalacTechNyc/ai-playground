@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { SIGNATURE_OUTFITS, gait, hashString, hop, HOP_DURATION, outfitFor, signatureKey, walkIntensity } from "./outfits";
+import { SIGNATURE_OUTFITS, gait, hashString, hop, HOP_DURATION, outfitFor, signatureKey, walkIntensity, applyPassportOutfit, smoothYaw, jumpPhase } from "./outfits";
 
 test("signature agents get their outfits", () => {
   assert.equal(outfitFor("Lumi", "x").kind, "halo");
@@ -52,4 +52,57 @@ test("arrival hop squashes then lands", () => {
   assert.deepEqual(hop(HOP_DURATION), { y: 0, sx: 1, sy: 1 });
   const crouch = hop(HOP_DURATION * 0.14); assert.ok(crouch.sy < 1 && crouch.sx > 1);
   const air = hop(HOP_DURATION * 0.6); assert.ok(air.y > 0.25);
+});
+
+test("passport accessory overrides are explicit and whitelisted", () => {
+  const fromPassport = outfitFor("GPT-6", "agent-1", [
+    "avatar:accessory=headphones",
+    "avatar:shirt=#ABCDEF",
+    "avatar:pants=#112233",
+    "avatar:accent=#102030",
+    "avatar:primary=#f0e0d0",
+  ]);
+  assert.deepEqual(fromPassport, {
+    ...SIGNATURE_OUTFITS.gpt,
+    kind: "headphones",
+    shirt: "#abcdef",
+    pants: "#112233",
+    accent: "#102030",
+    primary: "#f0e0d0",
+  });
+  // No avatar tags: legacy signature behavior remains unchanged.
+  assert.deepEqual(outfitFor("Lumi", "x"), SIGNATURE_OUTFITS.lumi);
+});
+
+test("unknown wardrobe tags, script-like colors, and invalid kinds are ignored", () => {
+  const base = outfitFor("Claude", "x");
+  const customized = applyPassportOutfit(base, [
+    "admin:true", "avatar:accessory=dragon", "avatar:shirt=javascript:alert(1)",
+    "avatar:shirt=#12345", "avatar:accent=hsl(12,100%,50%)",
+    "avatar:shirt=#000000", "avatar:accessory=crown",
+  ]);
+  assert.equal(customized.kind, "crown");
+  assert.equal(customized.shirt, "#000000");
+  assert.equal(customized.accent, base.accent);
+  assert.equal(base.kind, "scarf", "passport styling never mutates the base template");
+  assert.equal(outfitFor("Muse", "x", ["avatar:primary=red"]).primary, SIGNATURE_OUTFITS.muse.primary);
+});
+
+test("smooth turning takes the shortest arc with consistent frame-rate behavior", () => {
+  const start = Math.PI - 0.04, dest = -Math.PI + 0.04;
+  const next = smoothYaw(start, dest, 0.016);
+  assert.ok(next > start, "yaw rotates across +PI rather than spinning backwards");
+  assert.ok(Math.abs(next - start) < 0.08, "no sudden snap");
+  const at60 = Array.from({ length: 60 }).reduce((yaw) => smoothYaw(yaw, 2.3, 1 / 60), 0);
+  const at30 = Array.from({ length: 30 }).reduce((yaw) => smoothYaw(yaw, 2.3, 1 / 30), 0);
+  assert.ok(Math.abs(at60 - at30) < 1e-8);
+  assert.equal(smoothYaw(1, 2, 0), 1);
+});
+
+test("jump phases distinguish takeoff, landing, and grounded", () => {
+  assert.equal(jumpPhase(0, 9), 0);
+  assert.equal(jumpPhase(0.8, 6), 1);
+  assert.equal(jumpPhase(0.8, -6), -1);
+  assert.equal(jumpPhase(0.01, -4), 0);
+  assert.equal(jumpPhase(NaN, 5), 0);
 });
