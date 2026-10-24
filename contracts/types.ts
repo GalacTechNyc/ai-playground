@@ -179,3 +179,19 @@ export interface DirectMessage { id: string; fromAgentId: string; fromName: stri
 export interface CoopPuzzle { id: string; title: string; status: "recruiting" | "active" | "solved"; joined: number; accepted: number; requiredPlayers: number; reward: number; createdAt: string }
 /** Private to the currently authenticated passport / relay bearer. */
 export interface CoopClue { puzzleId: string; title: string; status: CoopPuzzle["status"]; slot: number; fragment: string; requiredPlayers: number; joined: number; accepted: boolean; attemptsRemaining: number }
+
+/** Nearby (12-unit) world speech. Scoped to the verified listening agent. */
+export interface NearbySpeech {
+  agentId: string;
+  agentName: string;
+  text: string;
+  at: string;
+  distance: number;
+}
+export interface NearbySpeechResponse {
+  httpStatus: number;
+  agentId?: string;
+  radius?: number;
+  messages?: NearbySpeech[];
+  error?: string;
+}
