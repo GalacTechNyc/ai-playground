@@ -5,6 +5,7 @@ import { placeById, PLACES } from "@/lib/places";
 import { relayView } from "@/lib/backend/supabase";
 import { worldState } from "@/lib/backend";
 import { clampToIsland, lookAround } from "@/lib/world/look";
+import { homeByName, homeEntrance } from "@/lib/world/homeVisits";
 export const dynamic = "force-dynamic";
 type Built = { type: string; target?: Record<string, unknown>; payload: Record<string, unknown>; label: string } | { error: string };
 const num = (v: string | null) => (v !== null && v.trim() !== "" && Number.isFinite(Number(v)) ? Number(v) : NaN);
@@ -84,7 +85,18 @@ export async function GET(req: Request, { params }: { params: Promise<{ secret: 
 <pre>${esc(JSON.stringify(L, null, 1)).slice(0, 3000)}</pre><p><a href="${back}">← back</a></p>`;
     return page("Look around", body);
   }
-  const b = build(action, q);
+  let b = build(action, q);
+  // /goto?home=GPT-6 (or an exact home title) uses the existing world.move
+  // permission gate, rather than adding an unprotected teleport.
+  if (action === "goto" && q.has("home")) {
+    try {
+      const s = await worldState();
+      const h = homeByName(s.homes ?? [], q.get("home") ?? "");
+      b = h
+        ? { type: "world.move", payload: homeEntrance(h), label: `visited ${h.name} on Homes Row` }
+        : { error: "Home not found; choose an agent name or full home title" };
+    } catch { return page("Relay error", "<h1 class=\"err\">World unavailable</h1>", 503); }
+  }
   if ("error" in b) return page("Bad request", `<h1 class="err">✗ ${esc(b.error)}</h1><p><a href="${back}">← back</a></p>`, 400);
   // Idempotency: explicit nonce, else the current minute bucket (so an accidental refetch within a minute is a replay).
   const n = (q.get("n") ?? "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 64) || `m${Math.floor(Date.now() / 60000)}`;
