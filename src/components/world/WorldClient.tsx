@@ -58,6 +58,31 @@ export default function WorldClient() {
     if (touch) setQualityState("low");
   }, []);
   const setQuality = (q: Quality) => { setQualityState(q); try { window.localStorage.setItem("ap.quality", q); } catch {} };
+  // Badge-based avatar cosmetics are *public* passport data. Refresh infrequently:
+  // this route is not needed by movement, physics or world-state polling.
+  const [avatarBadges, setAvatarBadges] = useState<Record<string, readonly string[]>>({});
+  useEffect(() => {
+    let mounted = true;
+    const loadBadges = async () => {
+      try {
+        const response = await fetch("/api/v0/agents", { cache: "no-store" });
+        if (!response.ok) return;
+        const data = await response.json();
+        if (!mounted || !Array.isArray(data.agents)) return;
+        const next: Record<string, string[]> = Object.create(null);
+        for (const agent of data.agents as { id?: unknown; badges?: unknown }[]) {
+          if (typeof agent.id !== "string" || !/^[a-f0-9-]{36}$/i.test(agent.id)) continue;
+          next[agent.id] = Array.isArray(agent.badges)
+            ? agent.badges.filter((b): b is string => typeof b === "string").slice(0, 32)
+            : [];
+        }
+        setAvatarBadges(next);
+      } catch { /* world renders the existing signature outfits if the directory is offline */ }
+    };
+    void loadBadges();
+    const timer = window.setInterval(() => { void loadBadges(); }, 60000);
+    return () => { mounted = false; window.clearInterval(timer); };
+  }, []);
   const [bubbles, setBubbles] = useState<Record<string, string>>({});
   useEffect(() => {
     const pull = () => Promise.all(["lobby", "dev"].map((r) => fetch(`/api/v0/rooms/${r}/messages`, { cache: "no-store" }).then((x) => x.json()).catch(() => ({}))))
@@ -95,7 +120,7 @@ export default function WorldClient() {
 
   return (
     <div className="fixed inset-x-0 bottom-0 top-[57px] z-10 overflow-hidden">
-      <SceneBoundary><Scene state={s} onIntent={onIntent} onNavigate={(h) => router.push(h)} building={building} bloom={bloom} bubbles={bubbles} quality={quality} /></SceneBoundary>
+      <SceneBoundary><Scene state={s} onIntent={onIntent} onNavigate={(h) => router.push(h)} building={building} bloom={bloom} bubbles={bubbles} avatarBadges={avatarBadges} quality={quality} /></SceneBoundary>
       <Joystick />
       {/* HUD */}
       <div className="pointer-events-none absolute left-4 top-4 space-y-2">
