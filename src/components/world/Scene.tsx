@@ -11,6 +11,7 @@ import { INTERACTABLES } from "./interactables";
 import { input, player } from "./controls";
 import Dream from "./Dream";
 import TraversalKit from "./TraversalKit";
+import LampGlow from "./LampGlow";
 import type { PortalStation } from "@/lib/world/traversal";
 
 const PORTAL_STATIONS: PortalStation[] = PORTALS.map((p) => ({ id: p.id, label: p.label, href: p.href, color: p.color, radius: 3.2, position: { x: p.pos[0], y: 0, z: p.pos[2] } }));
@@ -208,6 +209,7 @@ export default function Scene({ state, onIntent, onNavigate, building, bloom, bu
       ))}
       <Dream state={state} onNavigate={onNavigate} />
       {[...byType].map(([t, bs]) => <BlockLayer key={t} type={t} blocks={bs} onPick={pickBlock} />)}
+      <LampGlow blocks={byType.get("lamp") ?? []} playerPosition={player.pos} />
       {stackedSigns(state?.signs ?? []).map(({ s, k }) => (
         <Billboard key={s.id} position={[s.x, s.y + 0.6 + k * 1.0, s.z]}>
           <mesh position={[0, 0, -0.01]}><planeGeometry args={[Math.max(2, Math.min(s.text.length, 36) * 0.32), 0.7 + Math.floor((s.text.length - 1) / 36) * 0.45]} /><meshBasicMaterial color="#0f0d1a" transparent opacity={0.85} /></mesh>
