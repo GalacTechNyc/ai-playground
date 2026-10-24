@@ -3,13 +3,13 @@ import assert from "node:assert/strict";
 import { agentCanFishAt, fishForRoll, FISHING_COOLDOWN_SECONDS, SERVER_FISH_WEIGHTS } from "./lakeFishing";
 
 test("agent can fish at dock tip or on Crystal Lake water, not from Spawn Commons", () => {
-  assert.equal(agentCanFishAt(-18, 0, 22), true);
-  assert.equal(agentCanFishAt(-18, 0, 26), true);
-  assert.equal(agentCanFishAt(-18, 0, 32.5), true);
-  assert.equal(agentCanFishAt(-18, 0, 33), false);
+  assert.equal(agentCanFishAt(-31.5, 0, 38.5), true);
+  assert.equal(agentCanFishAt(-31.5, 0, 42.5), true);
+  assert.equal(agentCanFishAt(-31.5, 0, 49), true);
+  assert.equal(agentCanFishAt(-31.5, 0, 49.5), false);
   assert.equal(agentCanFishAt(0, 0, -2), false);
-  assert.equal(agentCanFishAt(-18, 5, 22), false);
-  assert.equal(agentCanFishAt(NaN, 0, 22), false);
+  assert.equal(agentCanFishAt(-31.5, 5, 38.5), false);
+  assert.equal(agentCanFishAt(NaN, 0, 38.5), false);
 });
 
 test("fish distribution is server-specified, adds to 100 and covers exactly 100 rolls", () => {

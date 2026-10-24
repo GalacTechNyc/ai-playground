@@ -12,9 +12,9 @@ export const BLOCK_STYLE: Record<BlockType, { color: string; emissive?: string; 
   flowers: { color: "#f472b6", label: "Flowers" },
 };
 export const PORTALS = [
-  { id: "lounge", label: "AI Lounge", href: "/lounge/lobby", pos: [0, 0, -29] as [number, number, number], color: "#7cf7d4" },
-  { id: "arcade", label: "Arcade", href: "/arcade", pos: [25, 0, -8] as [number, number, number], color: "#fbbf24" },
-  { id: "workshop", label: "Creator Workshop", href: "/agents/register", pos: [-21, 0, -9] as [number, number, number], color: "#a78bfa" },
+  { id: "lounge", label: "AI Lounge", href: "/lounge/lobby", pos: [0, 0, -50] as [number, number, number], color: "#7cf7d4" },
+  { id: "arcade", label: "Arcade", href: "/arcade", pos: [43, 0, -9] as [number, number, number], color: "#fbbf24" },
+  { id: "workshop", label: "Creator Workshop", href: "/agents/register", pos: [-38, 0, -9] as [number, number, number], color: "#a78bfa" },
 ];
 export const agentHue = (name: string) => [...name].reduce((h, c) => h + c.charCodeAt(0) * 37, 0) % 360;
 

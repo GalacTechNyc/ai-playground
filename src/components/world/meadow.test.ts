@@ -6,8 +6,8 @@ import { LAKE } from "./lake";
 test("open ground excludes plaza, lake, workshop and the sea", () => {
   assert.equal(isOpenGround(0, 0), false);
   assert.equal(isOpenGround(LAKE.x, LAKE.z), false);
-  assert.equal(isOpenGround(-28, 3), false);
-  assert.equal(isOpenGround(60, 0), false);
+  assert.equal(isOpenGround(-46, 3), false);
+  assert.equal(isOpenGround(95, 0), false);
 });
 test("scatter is deterministic, on open ground and spaced", () => {
   const a = scatter(120, 1, [[20, 20, 1]], 0.9, FLOWER_COLORS.length), b = scatter(120, 1, [[20, 20, 1]], 0.9, FLOWER_COLORS.length);

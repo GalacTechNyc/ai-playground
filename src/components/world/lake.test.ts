@@ -5,9 +5,9 @@ import { FISH, LAKE, canFish, clampToLake, inLake, onDock, pickCatch } from "./l
 test("lake and dock regions", () => {
   assert.equal(inLake(LAKE.x, LAKE.z), true);
   assert.equal(inLake(0, 0), false);
-  assert.equal(onDock(-18, 20), true);
-  assert.equal(inLake(-18, 20), false, "dock is not water");
-  assert.equal(inLake(-16, 20), true);
+  assert.equal(onDock(-31.5, 36.5), true);
+  assert.equal(inLake(-31.5, 36.5), false, "dock is not water");
+  assert.equal(inLake(-29.5, 36.5), true);
 });
 test("boat stays on the lake", () => {
   const p = clampToLake(LAKE.x + 50, LAKE.z);
@@ -15,7 +15,7 @@ test("boat stays on the lake", () => {
   assert.deepEqual(clampToLake(LAKE.x, LAKE.z), { x: LAKE.x, z: LAKE.z });
 });
 test("fishing spots", () => {
-  assert.equal(canFish(-18, 21.5), true);
+  assert.equal(canFish(-31.5, 38), true);
   assert.equal(canFish(0, 0), false);
   assert.equal(canFish(0, 0, true), true);
 });

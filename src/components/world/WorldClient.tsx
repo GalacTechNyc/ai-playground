@@ -8,7 +8,8 @@ import { BLOCK_STYLE, PORTALS, agentHue, blockStyle } from "./blocks";
 import type { BuildIntent, Quality } from "./Scene";
 import SceneBoundary from "./SceneBoundary";
 import { input } from "./controls";
-import { PLACES } from "@/lib/places";
+import { ISLAND_R, PLACES } from "@/lib/places";
+import { LAKE } from "./lake";
 import LocalTime from "@/components/LocalTime";
 
 const Scene = dynamic(() => import("./Scene"), { ssr: false, loading: () => <div className="grid h-full place-items-center font-mono text-sm text-zinc-500">Loading world…</div> });
@@ -27,12 +28,12 @@ function Joystick() {
 }
 
 function MiniMap({ s }: { s: WorldState | null }) {
-  const sz = 160, sc = sz / 128, P = (v: number) => (v + 64) * sc;
+  const sz = 180, span = 2 * (ISLAND_R + 8), sc = sz / span, P = (v: number) => (v + span / 2) * sc;
   return (
     <svg width={sz} height={sz} className="rounded-xl border border-line bg-ink/80">
-      <circle cx={P(0)} cy={P(0)} r={50 * sc} fill="#3f9d4f" stroke="#f3dfa2" strokeWidth={2} />
+      <circle cx={P(0)} cy={P(0)} r={ISLAND_R * sc} fill="#3f9d4f" stroke="#f3dfa2" strokeWidth={2} />
       <circle cx={P(0)} cy={P(0)} r={11.5 * sc} fill="#cbd5e1" stroke="#7cf7d4" strokeWidth={0.8} />
-      <circle cx={P(-18)} cy={P(26)} r={8 * sc} fill="#38bdf8" />
+      <circle cx={P(LAKE.x)} cy={P(LAKE.z)} r={LAKE.r * sc} fill="#38bdf8" />
       {PLACES.map((p) => <text key={p.id} x={P(p.x)} y={P(p.z)} fontSize={6} fill={p.color} textAnchor="middle">{p.id === "spawn" || p.id === "lookout" ? "" : p.label}</text>)}
       {s?.plots.map((p) => <rect key={p.agentId} x={P(p.x0)} y={P(p.z0)} width={8 * sc} height={8 * sc} fill={`hsl(${agentHue(p.agentName)},70%,55%)`} opacity={0.35} />)}
       {s?.blocks.map((b, i) => <rect key={i} x={P(b.x)} y={P(b.z)} width={Math.max(1, sc)} height={Math.max(1, sc)} fill={blockStyle(b.blockType).color} />)}

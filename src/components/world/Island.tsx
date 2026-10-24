@@ -5,7 +5,10 @@ import { Billboard, Text } from "@react-three/drei";
 import * as THREE from "three";
 import { PLACES } from "@/lib/places";
 
-export const ISLAND_R = 50;
+import { ISLAND_R } from "@/lib/places";
+export { ISLAND_R };
+import { LAKE, DOCK } from "./lake";
+const AR = PLACES.find((p) => p.id === "arcade")!, WS = PLACES.find((p) => p.id === "workshop")!;
 import { INTERACTABLES } from "./interactables";
 import { FLOWER_COLORS, scatter, type Scatter } from "./meadow";
 import TreeLOD from "./TreeLOD";
@@ -16,17 +19,17 @@ const nearPath = (x: number, z: number) => PLACES.some((p) => {
 });
 export const TREES: [number, number, number][] = (() => {
   const out: [number, number, number][] = [];
-  for (let i = 0; out.length < 70 && i < 600; i++) {
-    const a = rand(i) * Math.PI * 2, r = 14 + rand(i + 99) * 33, x = Math.cos(a) * r, z = Math.sin(a) * r;
-    if ((z < -22 && z > -50 && Math.abs(x) < 36) || nearPath(x, z) || PLACES.some((p) => Math.hypot(p.x - x, p.z - z) < 7.5) || Math.hypot(x, z) < 13) continue;
+  for (let i = 0; out.length < 170 && i < 2000; i++) {
+    const a = rand(i) * Math.PI * 2, r = 14 + rand(i + 99) * (ISLAND_R - 17), x = Math.cos(a) * r, z = Math.sin(a) * r;
+    if ((z < -36 && z > -82 && Math.abs(x) < 52) || nearPath(x, z) || PLACES.some((p) => Math.hypot(p.x - x, p.z - z) < 7.5) || Math.hypot(x, z) < 13) continue;
     out.push([x, z, 0.8 + rand(i + 7) * 0.7]);
   }
   return out;
 })();
 
-const FLOWERS = scatter(180, 1, TREES, 0.9, FLOWER_COLORS.length);
-const BUSHES = scatter(36, 2, TREES, 2.4);
-const ROCKS = scatter(24, 3, TREES, 2.6);
+const FLOWERS = scatter(450, 1, TREES, 0.9, FLOWER_COLORS.length);
+const BUSHES = scatter(90, 2, TREES, 2.4);
+const ROCKS = scatter(60, 3, TREES, 2.6);
 
 /** One instanced mesh per scatter layer; optional per-instance colors. */
 function ScatterLayer({ items, geo, y, scale = 1, color, palette, flat = true }: { items: Scatter[]; geo: THREE.BufferGeometry; y: number; scale?: number; color?: string; palette?: readonly string[]; flat?: boolean }) {
@@ -79,8 +82,8 @@ export default function Island({ onGround, quality = "high" }: { onGround: (e: T
     <group>
       <Water />
       {/* sand + grass island */}
-      <mesh position={[0, -0.6, 0]} receiveShadow><cylinderGeometry args={[ISLAND_R + 4, ISLAND_R + 7, 1, 64]} /><meshStandardMaterial color="#f3dfa2" flatShading /></mesh>
-      <mesh position={[0, -0.5, 0]} receiveShadow onPointerDown={onGround}><cylinderGeometry args={[ISLAND_R, ISLAND_R + 1.5, 1, 64]} /><meshStandardMaterial color="#5cc96b" flatShading /></mesh>
+      <mesh position={[0, -0.6, 0]} receiveShadow><cylinderGeometry args={[ISLAND_R + 5, ISLAND_R + 9, 1, 96]} /><meshStandardMaterial color="#f3dfa2" flatShading /></mesh>
+      <mesh position={[0, -0.5, 0]} receiveShadow onPointerDown={onGround}><cylinderGeometry args={[ISLAND_R, ISLAND_R + 1.5, 1, 96]} /><meshStandardMaterial color="#5cc96b" flatShading /></mesh>
       {/* paths from the plaza to each district */}
       {paths.map((p) => { const L = Math.hypot(p.x, p.z) - 6; const a = Math.atan2(p.x, p.z);
         return <mesh key={p.id} position={[Math.sin(a) * (6 + L / 2), 0.02, Math.cos(a) * (6 + L / 2)]} rotation-y={a} receiveShadow>
@@ -89,16 +92,16 @@ export default function Island({ onGround, quality = "high" }: { onGround: (e: T
       <mesh position={[0, 0.03, 0]} receiveShadow><cylinderGeometry args={[11.5, 11.5, 0.06, 64]} /><meshStandardMaterial color="#cbd5e1" /></mesh>
       <mesh rotation-x={-Math.PI / 2} position={[0, 0.07, 0]}><ringGeometry args={[11.2, 11.6, 96]} /><meshBasicMaterial color="#7cf7d4" toneMapped={false} /></mesh>
       {/* Crystal Lake + dock */}
-      <mesh position={[-18, 0.04, 26]} receiveShadow><cylinderGeometry args={[8, 8, 0.05, 48]} /><meshStandardMaterial color="#38bdf8" roughness={0.1} transparent opacity={0.85} /></mesh>
-      <mesh position={[-18, 0.3, 19.5]} castShadow><boxGeometry args={[2, 0.2, 5]} /><meshStandardMaterial color="#a16207" /></mesh>
+      <mesh position={[LAKE.x, 0.04, LAKE.z]} receiveShadow><cylinderGeometry args={[LAKE.r, LAKE.r, 0.05, 48]} /><meshStandardMaterial color="#38bdf8" roughness={0.1} transparent opacity={0.85} /></mesh>
+      <mesh position={[DOCK.x, 0.3, (DOCK.z0 + DOCK.z1) / 2]} castShadow><boxGeometry args={[2, 0.2, DOCK.z1 - DOCK.z0]} /><meshStandardMaterial color="#a16207" /></mesh>
       {/* Arcade Hall */}
-      <group position={[30, 0, 0]}>
+      <group position={[AR.x + 6, 0, AR.z]}>
         <mesh position={[0, 3, 0]} castShadow receiveShadow><boxGeometry args={[8, 6, 12]} /><meshStandardMaterial color="#312e81" /></mesh>
         <mesh position={[-4.05, 3, 0]}><boxGeometry args={[0.1, 4, 6]} /><meshStandardMaterial color="#f472b6" emissive="#f472b6" emissiveIntensity={1.5} toneMapped={false} /></mesh>
         <Billboard position={[0, 7.5, 0]}><Text fontSize={1.2} color="#f472b6" outlineWidth={0.05} outlineColor="#1e1b4b">ARCADE</Text></Billboard>
       </group>
       {/* Creator Workshop build zone */}
-      <group position={[-28, 0, 0]}>
+      <group position={[WS.x - 4, 0, WS.z]}>
         <mesh position={[0, 0.06, 0]} receiveShadow><boxGeometry args={[14, 0.1, 14]} /><meshStandardMaterial color="#ede9fe" /></mesh>
         <gridHelper args={[14, 14, "#a78bfa", "#c4b5fd"]} position={[0, 0.12, 0]} />
       </group>

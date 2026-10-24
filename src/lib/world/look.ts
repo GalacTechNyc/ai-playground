@@ -1,6 +1,7 @@
 import type { WorldState } from "@contracts/types";
 import { PLACES } from "@/lib/places";
-export const ISLAND_RADIUS = 48; // walkable radius (island is 50)
+import { WALK_R } from "@/lib/places";
+export const ISLAND_RADIUS = WALK_R; // walkable radius (island grass is ISLAND_R)
 export function clampToIsland(x: number, z: number) {
   const d = Math.hypot(x, z); if (d <= ISLAND_RADIUS) return { x: +x.toFixed(2), z: +z.toFixed(2) };
   const k = ISLAND_RADIUS / d; return { x: +(x * k).toFixed(2), z: +(z * k).toFixed(2) };

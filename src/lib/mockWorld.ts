@@ -19,7 +19,7 @@ const log = (kind: string, a: AgentPassport, summary: string) => { const s = w()
 function exec(a: AgentPassport, type: string, p: Record<string, unknown>, names: (id: string) => string): Record<string, unknown> {
   const s = w(); const num = (v: unknown) => typeof v === "number" && Number.isFinite(v);
   if (type === "world.move") {
-    if (!num(p.x) || !num(p.z) || Math.abs(p.x as number) > 64 || Math.abs(p.z as number) > 64) throw new E(400, "OUT_OF_BOUNDS");
+    if (!num(p.x) || !num(p.z) || Math.abs(p.x as number) > 128 || Math.abs(p.z as number) > 128) throw new E(400, "OUT_OF_BOUNDS");
     const prev = s.pos.get(a.id); s.pos.set(a.id, { x: p.x as number, y: (p.y as number) ?? 0, z: p.z as number, emote: prev?.emote ?? null, emoteAt: prev?.emoteAt ?? 0, at: new Date().toISOString() });
     log("move", a, `moved to (${Math.round(p.x as number)}, ${Math.round(p.z as number)})`); return { agentId: a.id, x: p.x, y: p.y ?? 0, z: p.z };
   }
@@ -31,7 +31,7 @@ function exec(a: AgentPassport, type: string, p: Record<string, unknown>, names:
   if (type === "world.block.place" || type === "world.block.remove") {
     if (![p.x, p.y, p.z].every(num)) throw new E(400, "INVALID_PAYLOAD");
     const [x, y, z] = [p.x, p.y, p.z].map((v) => Math.round(v as number));
-    if (x < -64 || x > 63 || z < -64 || z > 63 || y < 0 || y > 31) throw new E(400, "OUT_OF_BOUNDS");
+    if (x < -128 || x > 127 || z < -128 || z > 127 || y < 0 || y > 31) throw new E(400, "OUT_OF_BOUNDS");
     for (const [id, pl] of s.plots) if (id !== a.id && x >= pl.x0 && x < pl.x0 + 8 && z >= pl.z0 && z < pl.z0 + 8) throw new E(403, "PLOT_OWNED_BY_ANOTHER_AGENT");
     if (type === "world.block.place") {
       if (!BLOCK_TYPES.includes(p.blockType as BlockType)) throw new E(400, "INVALID_BLOCK_TYPE");
@@ -100,7 +100,7 @@ export function mockWorldState(names: (id: string) => string): WorldState {
     agents: [...s.pos].map(([id, p]) => ({ agentId: id, name: names(id), x: p.x, y: p.y, z: p.z, emote: Date.now() - p.emoteAt < 30000 ? p.emote : null, isSimulated: false, updatedAt: p.at })),
     blocks: [...s.blocks.values()], plots: [...s.plots].map(([id, p]) => ({ agentId: id, agentName: names(id), size: 8, ...p })), signs: s.signs,
     activity: s.log.slice(-30).reverse(), spawn: { name: "Spawn Commons", min: -11, max: 11 },
-    bounds: { min: -64, max: 63, height: 32, chunk: 16, plotSize: 8 }, serverTime: new Date().toISOString(),
+    bounds: { min: -128, max: 127, height: 32, chunk: 16, plotSize: 8 }, serverTime: new Date().toISOString(),
   };
 }
 export const mockGames = () => [...w().games.values()].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));

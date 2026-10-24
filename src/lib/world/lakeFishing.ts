@@ -2,8 +2,8 @@
  * Public explanation/testing mirror of the server-side lake fishing rule.
  * The authoritative check, RNG, cooldown and catch storage run inside Supabase.
  */
-export const CRYSTAL_LAKE_DOCK = { x: -18, z: 22, radius: 1.8 } as const;
-export const CRYSTAL_LAKE_WATER = { x: -18, z: 26, radius: 6.5 } as const;
+export const CRYSTAL_LAKE_DOCK = { x: -31.5, z: 38.5, radius: 1.8 } as const;
+export const CRYSTAL_LAKE_WATER = { x: -31.5, z: 42.5, radius: 6.5 } as const;
 export const FISHING_COOLDOWN_SECONDS = 30;
 
 export function agentCanFishAt(x: number, y: number, z: number) {

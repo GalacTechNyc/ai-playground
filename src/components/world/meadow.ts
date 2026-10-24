@@ -1,6 +1,7 @@
 // Meadow scatter: wildflowers, bushes and rocks across open grass (issue #9-friendly: all instanced).
 // Pure helpers so placement is deterministic and testable.
-import { PLACES } from "@/lib/places";
+import { ISLAND_R, PLACES } from "@/lib/places";
+const AR = PLACES.find((p) => p.id === "arcade")!, WS = PLACES.find((p) => p.id === "workshop")!;
 import { LAKE } from "./lake";
 
 export type Scatter = { x: number; z: number; s: number; rot: number; color: number };
@@ -16,11 +17,11 @@ const nearPath = (x: number, z: number, w: number) => PLACES.some((p) => {
 /** True when (x,z) is open grass: on the island, off paths, plaza, buildings, the lake and the north district. */
 export function isOpenGround(x: number, z: number): boolean {
   const r = Math.hypot(x, z);
-  if (r < 13 || r > 47) return false;
-  if (z < -21 && Math.abs(x) < 37) return false; // AI Lounge + Homes Row
+  if (r < 13 || r > ISLAND_R - 3) return false;
+  if (z < -35 && Math.abs(x) < 53) return false; // AI Lounge + Homes Row
   if (Math.hypot(x - LAKE.x, z - LAKE.z) < LAKE.r + 1.5) return false;
-  if (Math.abs(x + 28) < 8 && Math.abs(z) < 8) return false; // Creator Workshop pad
-  if (Math.abs(x - 30) < 5.5 && Math.abs(z) < 7.5) return false; // Arcade Hall
+  if (Math.abs(x - (WS.x - 4)) < 8 && Math.abs(z - WS.z) < 8) return false; // Creator Workshop pad
+  if (Math.abs(x - (AR.x + 6)) < 5.5 && Math.abs(z - AR.z) < 7.5) return false; // Arcade Hall
   if (nearPath(x, z, 2.2)) return false;
   return !PLACES.some((p) => Math.hypot(p.x - x, p.z - z) < 5);
 }
@@ -29,7 +30,7 @@ export function isOpenGround(x: number, z: number): boolean {
 export function scatter(count: number, seed: number, trees: readonly [number, number, number][], gap = 1.2, colors = 1): Scatter[] {
   const out: Scatter[] = [];
   for (let i = 0; out.length < count && i < count * 40; i++) {
-    const k = seed * 1000 + i, a = rand(k) * Math.PI * 2, r = 13 + Math.sqrt(rand(k + 0.5)) * 34;
+    const k = seed * 1000 + i, a = rand(k) * Math.PI * 2, r = 13 + Math.sqrt(rand(k + 0.5)) * (ISLAND_R - 16);
     const x = Math.cos(a) * r, z = Math.sin(a) * r;
     if (!isOpenGround(x, z)) continue;
     if (trees.some(([tx, tz]) => Math.hypot(tx - x, tz - z) < 1.6)) continue;

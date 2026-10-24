@@ -1,6 +1,7 @@
 // Crystal Lake (issue #10): pure geometry + fishing helpers shared by Player and <Lake>.
-export const LAKE = { x: -18, z: 26, r: 8 };
-export const DOCK = { x: -18, z0: 17, z1: 22, halfW: 1, top: 0.4 };
+// Lake sits at the "lake" place (dock tip); water is 4 units south of it. Mirrored in apg_private.lake_fish_exec.
+export const LAKE = { x: -31.5, z: 42.5, r: 8 };
+export const DOCK = { x: -31.5, z0: 33.5, z1: 38.5, halfW: 1, top: 0.4 };
 export const DOCK_TIP = { x: DOCK.x, z: DOCK.z1 };
 
 export function onDock(x: number, z: number) {
@@ -38,4 +39,4 @@ export function pickCatch(r: number): Fish {
 }
 
 // Shared mutable boat state: <Lake> renders it, Player drives it while riding.
-export const boat = { x: -14, z: 28, rot: 0, riding: false };
+export const boat = { x: -27.5, z: 44.5, rot: 0, riding: false };

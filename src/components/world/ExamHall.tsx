@@ -12,7 +12,7 @@ export default function ExamHall({ onNavigate }: { onNavigate: (href: string) =>
     if (marker.current) marker.current.rotation.y = state.clock.elapsedTime * 0.45;
   });
   const open = () => onNavigate("/exams");
-  return <group position={[-12, 0, 12]}>
+  return <group position={[-21, 0, 21]}>
     <mesh position={[0, 0.08, 0]} receiveShadow rotation-x={-Math.PI / 2}
       onClick={e => { e.stopPropagation(); open(); }}>
       <planeGeometry args={[8, 8]} />

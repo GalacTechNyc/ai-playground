@@ -11,7 +11,7 @@ import { RARITY_COLOR, catchLines, clipName, freshLegendary, standingLines } fro
 import Fireworks from "./Fireworks";
 
 /** West shore beside the dock entrance, angled toward the path in from Spawn. Clear of trees and the water. */
-export const LAKE_BOARD = { x: -24.5, z: 17, rotY: 2.0 };
+export const LAKE_BOARD = { x: -38, z: 33.5, rotY: 2.0 };
 
 const W = 6.2, H = 3.4, BOTTOM = 0.5, TOP = BOTTOM + H;
 const AQUA = "#67e8f9", MINT = "#7cf7d4", GOLD = "#fbbf24";

@@ -243,12 +243,12 @@ function DayNight({ low = false }: { low?: boolean }) {
     if (h > 0.25) c.copy(day); else if (h > -0.1) c.copy(night).lerp(dusk, (h + 0.1) / 0.35).lerp(day, Math.max(0, (h - 0.05) / 0.2)); else c.copy(night);
     if (!(scene.background instanceof THREE.Color)) scene.background = new THREE.Color(); (scene.background as THREE.Color).copy(c);
     if (scene.fog) (scene.fog as THREE.Fog).color.copy(c);
-    if (sun.current) { sun.current.position.set(Math.cos(ang) * 50, Math.max(5, h * 60), 20); sun.current.intensity = Math.max(0.15, h * 2.4); }
+    if (sun.current) { sun.current.position.set(Math.cos(ang) * 80, Math.max(5, h * 90), 30); sun.current.intensity = Math.max(0.15, h * 2.4); }
     if (hemi.current) hemi.current.intensity = 0.35 + Math.max(0, h) * 0.8;
   });
   return (<>
     <hemisphereLight ref={hemi} args={["#dbeafe", "#3f6212", 0.9]} />
-    <directionalLight ref={sun} position={[30, 50, 20]} intensity={2} castShadow={!low} shadow-mapSize={low ? [1024, 1024] : [2048, 2048]} shadow-camera-left={-60} shadow-camera-right={60} shadow-camera-top={60} shadow-camera-bottom={-60} shadow-camera-far={200} />
+    <directionalLight ref={sun} position={[30, 50, 20]} intensity={2} castShadow={!low} shadow-mapSize={low ? [1024, 1024] : [2048, 2048]} shadow-camera-left={-100} shadow-camera-right={100} shadow-camera-top={100} shadow-camera-bottom={-100} shadow-camera-far={320} />
   </>);
 }
 
@@ -288,8 +288,8 @@ export default function Scene({ state, onIntent, onNavigate, building, bloom, bu
   const pickGround = (e: ThreeEvent<PointerEvent>) => { if (!building || e.button !== 0) return; e.stopPropagation(); onIntent({ kind: "place", x: Math.floor(e.point.x), y: 0, z: Math.floor(e.point.z) }); };
   return (
     <Canvas key={quality} shadows={!low} dpr={low ? [0.75, 1] : [1, 1.75]} camera={{ position: [0, 7, 19], fov: 55 }} onContextMenu={(e) => e.preventDefault()} gl={{ antialias: !low, powerPreference: low ? "low-power" : "high-performance" }}>
-      <fog attach="fog" args={["#8fd3ff", 60, 160]} />
-      <Stars radius={150} depth={40} count={low ? 400 : 1500} factor={4} fade speed={0.5} />
+      <fog attach="fog" args={["#8fd3ff", 90, 260]} />
+      <Stars radius={260} depth={40} count={low ? 400 : 1500} factor={4} fade speed={0.5} />
       <DayNight low={low} />
       <Island onGround={pickGround} quality={quality} />
       <Player building={building} />
@@ -313,7 +313,7 @@ export default function Scene({ state, onIntent, onNavigate, building, bloom, bu
       <TraversalKit playerPosition={player.pos} enabled={!building} showPortals={false} portals={PORTAL_STATIONS}
         onLaunch={(_, impulse) => { player.impulse = { ...impulse }; }} onEnterPortal={(portal) => onNavigate(portal.href)} />
       {(state?.agents ?? []).map((a) => <Avatar key={a.agentId} a={a} low={low} badges={avatarBadges?.[a.agentId]} bubble={a.say || bubbles?.[a.agentId]} />)}
-      <OrbitControls makeDefault enableDamping maxPolarAngle={Math.PI / 2.05} minDistance={3} maxDistance={70} target={[0, 1.6, 8]} enablePan={false} />
+      <OrbitControls makeDefault enableDamping maxPolarAngle={Math.PI / 2.05} minDistance={3} maxDistance={110} target={[0, 1.6, 8]} enablePan={false} />
       {bloom && !low && !hover && (
         <EffectComposer multisampling={0}>
           <Bloom intensity={0.6} luminanceThreshold={0.85} luminanceSmoothing={0.2} mipmapBlur />

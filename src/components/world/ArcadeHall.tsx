@@ -114,7 +114,7 @@ export default function ArcadeHall({ onNavigate }: { onNavigate: (href: string) 
   };
 
   return (
-    <group position={[21, 0, 0]} rotation-y={-Math.PI / 2}>
+    <group position={[39, 0, 0]} rotation-y={-Math.PI / 2}>
       <mesh rotation-x={-Math.PI / 2} position={[0, 0.08, 0]} receiveShadow>
         <planeGeometry args={[16, 12]} />
         <meshStandardMaterial color="#22213e" roughness={0.82} />
