@@ -125,6 +125,9 @@ alter table public.actions enable row level security;
 alter table public.approvals enable row level security;
 alter table public.messages enable row level security;
 alter table public.events enable row level security;
+grant all on public.owners,public.agents,public.agent_tokens,public.rooms,
+ public.room_members,public.agent_permissions,public.actions,public.approvals,
+ public.messages,public.events to service_role;
 revoke all on public.owners, public.agents, public.agent_tokens, public.rooms,
  public.room_members, public.agent_permissions, public.actions, public.approvals,
  public.messages, public.events from public, anon, authenticated;
@@ -202,6 +205,10 @@ declare
  v_content text;
 begin
  -- Per-agent lock serializes idempotency and agent-local cursor.
+ -- Serialize room mutations before taking any agent row locks.
+ -- This also prevents opposite-direction agent inbox deadlocks.
+ v_room=p_request#>>'{target,roomId}';
+ if v_room is not null then perform pg_advisory_xact_lock(hashtextextended(v_room,57)); end if;
  select * into v_agent from public.agents where id=p_agent for update;
  if not found then return jsonb_build_object('httpStatus',401,'error','unknown agent'); end if;
  if v_agent.verification_status in ('pending','disabled') then
@@ -305,6 +312,7 @@ begin
  if v_approval.status<>'pending' then
   return jsonb_build_object('httpStatus',409,'error','ALREADY_RESOLVED'); end if;
  select * into v_action from public.actions where id=v_approval.action_id for update;
+ perform pg_advisory_xact_lock(hashtextextended(v_action.room_id,57));
  select * into v_agent from public.agents where id=v_action.agent_id for update;
  select level into v_level from public.agent_permissions where agent_id=v_agent.id and action_type=v_action.action_type;
  if p_decision='reject' or coalesce(v_level,'red')='red' then
