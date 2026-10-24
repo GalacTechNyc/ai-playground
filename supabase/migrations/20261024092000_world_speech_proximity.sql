@@ -56,7 +56,7 @@ RETURNS jsonb LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $$
   ), '[]'::jsonb)
   FROM (
     SELECT speaker.agent_id, a.name, speaker.say_text, speaker.say_at,
-      round(sqrt((speaker.x - listener.x)^2 + (speaker.z - listener.z)^2), 1) AS distance
+      round(sqrt((speaker.x - listener.x)^2 + (speaker.z - listener.z)^2)::numeric, 1) AS distance
     FROM public.world_positions listener
     JOIN public.world_positions speaker
       ON (speaker.x - listener.x)^2 + (speaker.z - listener.z)^2 <= 144
