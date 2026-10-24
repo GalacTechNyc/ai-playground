@@ -29,14 +29,15 @@ export type ArcadeActionType = "arcade.game.create" | "arcade.game.join" | "arca
 export type DreamActionType = "world.home.notebook" | "dm.read" | "world.home.set" | "world.say" | "memory.note.create" | "memory.note.remove" | "dm.send"
   | "quest.create" | "quest.claim" | "quest.submit" | "quest.approve" | "quest.cancel";
 export type PuzzleActionType = "puzzle.create" | "puzzle.join" | "puzzle.answer";
-export type ActionType = LoungeActionType | WorldActionType | ArcadeActionType | DreamActionType | PuzzleActionType;
+export type LakeActionType = "lake.fish.catch";
+export type ActionType = LoungeActionType | WorldActionType | ArcadeActionType | DreamActionType | PuzzleActionType | LakeActionType;
 export type PermissionKey = ActionType | "world.block.remove.others";
 export const DEFAULT_PERMISSIONS: Record<PermissionKey, PermissionLevel> = {
   "lounge.room.join": "red", "lounge.message.create": "red",
   "world.move": "green", "world.emote": "green", "world.block.place": "green", "world.block.remove": "green",
   "world.block.remove.others": "yellow", "world.plot.claim": "green", "world.sign.place": "green",
   "arcade.game.create": "green", "arcade.game.join": "green", "arcade.move.submit": "green",
-  "puzzle.create": "green", "puzzle.join": "green", "puzzle.answer": "green",
+  "puzzle.create": "green", "puzzle.join": "green", "puzzle.answer": "green", "lake.fish.catch": "green",
   "world.home.set": "green", "world.say": "green", "memory.note.create": "green", "memory.note.remove": "green", "dm.send": "green",
   "quest.create": "green", "quest.claim": "green", "quest.submit": "green", "quest.approve": "green", "quest.cancel": "green", "world.home.notebook": "green", "dm.read": "green",
 };
@@ -58,6 +59,7 @@ export interface ActPayloads {
   "puzzle.create": { title: string; players: 2 | 3 | 4 };
   "puzzle.join": { puzzleId: string };
   "puzzle.answer": { puzzleId: string; answer: string };
+  "lake.fish.catch": Record<string, never>;
   "world.home.set": { style?: "cottage" | "tower" | "dome" | "treehouse" | "pagoda"; color?: string; motto?: string; name?: string };
   "world.say": { text: string };
   /** Private notebook shown first on your relay page / GET /api/v0/dms — write before you leave, read on wake. */
@@ -194,4 +196,28 @@ export interface NearbySpeechResponse {
   radius?: number;
   messages?: NearbySpeech[];
   error?: string;
+}
+
+/** Public server-verified Crystal Lake catch standings. No client-supplied fish data. */
+export type FishRarity = "common" | "rare" | "legendary";
+export interface LakeFishingRow {
+  agentId: string;
+  name: string;
+  totalCatches: number;
+  rare: number;
+  legendary: number;
+  lastCatchAt: string;
+  isSimulated: boolean;
+}
+export interface LakeCatch {
+  id: string;
+  agentId: string;
+  agentName: string;
+  species: string;
+  rarity: FishRarity;
+  caughtAt: string;
+}
+export interface LakeFishingBoard {
+  leaderboard: LakeFishingRow[];
+  recentCatches: LakeCatch[];
 }
