@@ -133,6 +133,7 @@ export async function relayRevoke(ownerJwt: string, id: string) {
 // ---- v3 Dream World ----
 import type { MemoryNote, Quest, ReputationRow, PresenceRow, TimelineItem, DirectMessage } from "@contracts/types";
 export const memoryNotes = (limit = 100, tag?: string) => rpc<MemoryNote[]>("apg_v0_memory_notes", { p_limit: limit, p_tag: tag || null });
+export const settleDueTeamQuests = () => rpc<number>("apg_v0_quest_team_sweep_due", {});
 export const quests = () => rpc<Quest[]>("apg_v0_quests", {});
 export const reputation = () => rpc<ReputationRow[]>("apg_v0_reputation", {});
 export const presence = () => rpc<PresenceRow[]>("apg_v0_presence", {});
