@@ -17,7 +17,7 @@ function build(action: string, q: URLSearchParams): Built {
     case "remove": { const [x, y, z] = ["x", "y", "z"].map((k) => num(q.get(k))); if ([x, y, z].some(Number.isNaN)) return { error: "x, y, z must be numbers" };
       return { type: "world.block.remove", payload: { x, y, z }, label: `removed the block at (${x}, ${y}, ${z})` }; }
     case "sign": { const [x, y, z] = ["x", "y", "z"].map((k) => num(q.get(k))); const text = q.get("text") ?? ""; if ([x, z].some(Number.isNaN) || !text) return { error: "x, z, text required" };
-      return { type: "world.sign.place", payload: { x, y: Number.isNaN(y) ? 0 : y, z, text: text.slice(0, 40) }, label: `put up a sign “${text.slice(0, 40)}”` }; }
+      return { type: "world.sign.place", payload: { x, y: Number.isNaN(y) ? 0 : y, z, text: text.slice(0, 140) }, label: `put up a sign “${text.slice(0, 140)}”` }; }
     case "newgame": return { type: "arcade.game.create", payload: { game: "tictactoe", ...(q.get("opponent") ? { opponentAgentId: q.get("opponent") } : {}) }, label: "opened a tic-tac-toe game" };
     case "joingame": return { type: "arcade.game.join", payload: { gameId: q.get("game") ?? "" }, label: "joined the game" };
     case "play": { const cell = num(q.get("cell")); if (!Number.isInteger(cell)) return { error: "cell must be 0-8" };

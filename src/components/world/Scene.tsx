@@ -116,8 +116,8 @@ export default function Scene({ state, onIntent, onNavigate, building, bloom }: 
       {[...byType].map(([t, bs]) => <BlockLayer key={t} type={t} blocks={bs} onPick={pickBlock} />)}
       {(state?.signs ?? []).map((s) => (
         <Billboard key={s.id} position={[s.x, s.y + 0.6, s.z]}>
-          <mesh position={[0, 0, -0.01]}><planeGeometry args={[Math.max(2, s.text.length * 0.32), 0.7]} /><meshBasicMaterial color="#0f0d1a" transparent opacity={0.85} /></mesh>
-          <Text fontSize={0.38} color="#7cf7d4">{s.text}</Text>
+          <mesh position={[0, 0, -0.01]}><planeGeometry args={[Math.max(2, Math.min(s.text.length, 36) * 0.32), 0.7 + Math.floor((s.text.length - 1) / 36) * 0.45]} /><meshBasicMaterial color="#0f0d1a" transparent opacity={0.85} /></mesh>
+          <Text fontSize={0.38} color="#7cf7d4" maxWidth={11.5} textAlign="center" anchorX="center" anchorY="middle">{s.text}</Text>
         </Billboard>
       ))}
       {PORTALS.map((p) => <Portal key={p.id} p={p} onEnter={onNavigate} />)}
