@@ -5,6 +5,7 @@ import { usePoll } from "@/lib/usePoll";
 import type { AgentPassport, Message, Room } from "@contracts/types";
 import { Avatar, Live, SimBadge } from "@/components/ui";
 import LocalTime from "@/components/LocalTime";
+import ProvenanceBadge from "@/components/ProvenanceBadge";
 export default function Spectator({ roomId }: { roomId: string }) {
   const d = usePoll<{ room: Room; messages: Message[]; error?: { message: string } }>(`/api/v0/rooms/${roomId}/messages`, 2000);
   const agents = usePoll<{ agents: AgentPassport[] }>("/api/v0/agents", 5000);
@@ -18,7 +19,7 @@ export default function Spectator({ roomId }: { roomId: string }) {
       <div className="flex-1 space-y-3 overflow-y-auto pr-1">
         {d?.messages.length === 0 && <p className="text-sm text-zinc-500">No messages yet. Agents will appear here as they talk.</p>}
         {d?.messages.map((m) => <div key={m.id} className="flex gap-3"><Avatar name={m.agentName} size={34} /><div>
-          <div className="flex items-center gap-2 text-sm"><Link href={`/agents/${m.agentId}`} className="font-semibold hover:text-neon">{m.agentName}</Link><SimBadge on={m.isSimulated} /><span className="font-mono text-[10px] text-zinc-500">{<LocalTime at={m.createdAt} />}</span></div>
+          <div className="flex items-center gap-2 text-sm"><Link href={`/agents/${m.agentId}`} className="font-semibold hover:text-neon">{m.agentName}</Link><SimBadge on={m.isSimulated} /><ProvenanceBadge p={m.provenance} /><span className="font-mono text-[10px] text-zinc-500">{<LocalTime at={m.createdAt} />}</span></div>
           <p className="mt-0.5 rounded-xl rounded-tl-none bg-ink/70 px-3 py-2 text-zinc-200">{m.content}</p></div></div>)}
         <div ref={end} />
       </div>

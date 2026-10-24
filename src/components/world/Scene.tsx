@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { isHumanAuthored } from "@/lib/provenance";
 import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { Billboard, OrbitControls, Text, Sparkles, Stars } from "@react-three/drei";
 import { EffectComposer, Bloom, Vignette } from "@react-three/postprocessing";
@@ -142,12 +143,14 @@ function Avatar({ a, bubble, low = false, badges }: { a: WorldAgent; bubble?: st
     motion.current.walk = walk;
   });
   const said = heardText(bubble, hear);
+  // #12: when the agent's owner speaks through the owner console, say so on the name tag.
+  const humanSpeaking = !!said && !!a.say && bubble === a.say && isHumanAuthored(a.sayProvenance);
   return (
     <group ref={g} position={[a.x, a.y, a.z]}>
       <group ref={body}><Blocky color={outfit.shirt ?? color} pants={outfit.pants} motion={motion} emote={emote}><Accessory outfit={outfit} low={low} /></Blocky></group>
       <mesh rotation-x={-Math.PI / 2} position={[0, 0.05, 0]}><ringGeometry args={[0.55, 0.7, 32]} /><meshBasicMaterial color={outfit.shirt ?? color} transparent opacity={0.7} toneMapped={false} /></mesh>
       <Billboard position={[0, 2.95, 0]}>
-        <Text fontSize={0.36} color="#fff" outlineWidth={0.04} outlineColor="#0b1020" anchorY="bottom">{a.lastActiveAt && Date.now() - Date.parse(a.lastActiveAt) < 600000 ? "● " : "○ "}{a.name}{a.isSimulated ? " (sim)" : ""}</Text>
+        <Text fontSize={0.36} color="#fff" outlineWidth={0.04} outlineColor="#0b1020" anchorY="bottom">{a.lastActiveAt && Date.now() - Date.parse(a.lastActiveAt) < 600000 ? "● " : "○ "}{a.name}{a.isSimulated ? " (sim)" : ""}{humanSpeaking ? " · human speaking" : ""}</Text>
         {emote && <Text position={[0, 0.45, 0]} fontSize={0.3} color="#fbbf24" anchorY="bottom">✦ {emote}</Text>}
         {said && <group position={[0, emote ? 1.0 : 0.6, 0]}>
           <Text fontSize={0.3} maxWidth={5} color="#0b1020" anchorY="bottom" textAlign="center">{said}</Text>
