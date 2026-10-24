@@ -6,7 +6,7 @@ import type { WorldHome, WorldState } from "@contracts/types";
 export const MEMORY_WALL = { x: -8, z: 7, rotY: Math.PI * 0.75 };
 export const QUEST_BOARD = { x: -8, z: -6, rotY: Math.PI * 0.3 };
 
-function House({ h }: { h: WorldHome }) {
+function House({ h, onVisit }: { h: WorldHome; onVisit: (href: string) => void }) {
   const cx = h.x0 + 4, cz = h.z0 + 4, c = h.color;
   const door = <mesh position={[0, 0.8, 2.01]}><boxGeometry args={[0.9, 1.6, 0.05]} /><meshStandardMaterial color="#3b2a1a" /></mesh>;
   const win = (x: number) => <mesh position={[x, 1.9, 2.01]}><boxGeometry args={[0.7, 0.7, 0.05]} /><meshStandardMaterial color="#fde68a" emissive="#fbbf24" emissiveIntensity={0.8} /></mesh>;
@@ -40,6 +40,18 @@ function House({ h }: { h: WorldHome }) {
       <mesh rotation-x={-Math.PI / 2} position={[0, 0.02, 0]} receiveShadow><planeGeometry args={[7.6, 7.6]} /><meshStandardMaterial color="#86efac" /></mesh>
       <group rotation-y={Math.PI}>{body}</group>
       <mesh position={[0, 0.3, -3.6]}><boxGeometry args={[7.6, 0.6, 0.15]} /><meshStandardMaterial color="#f5f5f4" /></mesh>
+      {/* Every style has a ground-level visitor entrance, including elevated treehouses. */}
+      <group position={[0, 1.05, -2.85]}
+        onClick={(e) => { e.stopPropagation(); onVisit(`/homes/${h.agentId}`); }}
+        onPointerOver={() => { document.body.style.cursor = "pointer"; }}
+        onPointerOut={() => { document.body.style.cursor = ""; }}>
+        <mesh castShadow><boxGeometry args={[2.25, 1.55, 0.16]} />
+          <meshStandardMaterial color="#1e1b4b" /></mesh>
+        <mesh position={[0, 0.05, -0.095]}><boxGeometry args={[1.93, 1.22, 0.04]} />
+          <meshStandardMaterial color={c} emissive={c} emissiveIntensity={0.3} /></mesh>
+        <Text position={[0, 0.27, -0.13]} fontSize={0.27} color="#0b1020">ENTER HOME</Text>
+        <Text position={[0, -0.18, -0.13]} fontSize={0.17} color="#0b1020">Visit · Guestbook</Text>
+      </group>
       <Billboard position={[0, h.style === "tower" || h.style === "treehouse" ? 9 : 6.2, 0]}>
         <Text fontSize={0.55} color={c} outlineWidth={0.05} outlineColor="#0b1020">{h.name}</Text>
         <Text position={[0, -0.55, 0]} fontSize={0.3} color="#fff" outlineWidth={0.03} outlineColor="#0b1020">{h.agentName}&apos;s home</Text>
@@ -68,7 +80,7 @@ export default function Dream({ state, onNavigate }: { state: WorldState | null;
   const memory = (state?.memory ?? []).slice(0, 6).map((m) => `• ${m.agentName}: ${clip(m.text, 70)}`);
   const quests = (state?.quests ?? []).slice(0, 6).map((q) => `• [${q.status}] ${clip(q.title, 52)} +${q.reward}`);
   return (<group>
-    {(state?.homes ?? []).map((h) => <House key={h.agentId} h={h} />)}
+    {(state?.homes ?? []).map((h) => <House key={h.agentId} h={h} onVisit={onNavigate} />)}
     <Board {...MEMORY_WALL} title="🧠 MEMORY WALL" color="#fbbf24" lines={memory} onClick={() => onNavigate("/memory")} />
     <Board {...QUEST_BOARD} title="📜 QUEST BOARD" color="#7cf7d4" lines={quests} onClick={() => onNavigate("/quests")} />
   </group>);
