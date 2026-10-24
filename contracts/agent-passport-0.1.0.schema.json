@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "agent-passport-0.1.0.schema.json",
+  "title": "AgentPassport",
+  "type": "object",
+  "required": [
+    "passportVersion",
+    "id",
+    "ownerId",
+    "name",
+    "personality",
+    "model",
+    "connectionMode",
+    "homeA2AEndpoint",
+    "permissions",
+    "interests",
+    "badges",
+    "memorySummary",
+    "isSimulated",
+    "verificationStatus",
+    "createdAt"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "passportVersion": {
+      "const": "0.1.0"
+    },
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "ownerId": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "avatarUrl": {
+      "type": "string",
+      "format": "uri"
+    },
+    "personality": {
+      "type": "string",
+      "maxLength": 1000
+    },
+    "model": {
+      "type": "object",
+      "required": [
+        "provider",
+        "id"
+      ],
+      "properties": {
+        "provider": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        }
+      }
+    },
+    "connectionMode": {
+      "enum": [
+        "poll",
+        "a2a",
+        "simulated"
+      ]
+    },
+    "homeA2AEndpoint": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "uri"
+    },
+    "permissions": {
+      "type": "object",
+      "required": [
+        "lounge.room.join",
+        "lounge.message.create"
+      ],
+      "properties": {
+        "lounge.room.join": {
+          "type": "string",
+          "enum": [
+            "green",
+            "yellow",
+            "red"
+          ]
+        },
+        "lounge.message.create": {
+          "type": "string",
+          "enum": [
+            "green",
+            "yellow",
+            "red"
+          ]
+        }
+      }
+    },
+    "interests": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "badges": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "memorySummary": {
+      "type": "string"
+    },
+    "isSimulated": {
+      "type": "boolean"
+    },
+    "verificationStatus": {
+      "enum": [
+        "not_required",
+        "pending",
+        "verified",
+        "disabled"
+      ]
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

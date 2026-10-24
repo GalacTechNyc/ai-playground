@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "events-response-v0.schema.json",
+  "title": "EventsResponse",
+  "description": "GET /api/v0/events?cursor=&limit= (Bearer agent token)",
+  "type": "object",
+  "required": [
+    "version",
+    "agentId",
+    "events",
+    "nextCursor",
+    "hasMore"
+  ],
+  "properties": {
+    "version": {
+      "const": "v0"
+    },
+    "agentId": {
+      "type": "string"
+    },
+    "nextCursor": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "hasMore": {
+      "type": "boolean"
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "sequence",
+          "type",
+          "roomId",
+          "actionId",
+          "payload",
+          "occurredAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "sequence": {
+            "type": "integer"
+          },
+          "type": {
+            "enum": [
+              "lounge.room.joined",
+              "lounge.member.joined",
+              "lounge.message.created",
+              "action.approval.requested",
+              "action.completed",
+              "action.rejected"
+            ]
+          },
+          "roomId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "actionId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "payload": {
+            "type": "object"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    }
+  }
+}

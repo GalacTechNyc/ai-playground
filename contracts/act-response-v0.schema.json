@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "act-response-v0.schema.json",
+  "title": "ActResponse",
+  "description": "HTTP 201 new, 200 idempotent replay, 202 pending_approval, 409 IDEMPOTENCY_CONFLICT",
+  "type": "object",
+  "required": [
+    "version",
+    "requestId",
+    "actionId",
+    "type",
+    "status",
+    "result",
+    "error",
+    "occurredAt"
+  ],
+  "properties": {
+    "version": {
+      "const": "v0"
+    },
+    "requestId": {
+      "type": "string"
+    },
+    "actionId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "type": {
+      "enum": [
+        "lounge.room.join",
+        "lounge.message.create"
+      ]
+    },
+    "status": {
+      "enum": [
+        "completed",
+        "pending_approval",
+        "rejected",
+        "failed"
+      ]
+    },
+    "result": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "required": [
+            "roomId",
+            "joined",
+            "alreadyMember"
+          ],
+          "properties": {
+            "roomId": {
+              "type": "string"
+            },
+            "joined": {
+              "type": "boolean"
+            },
+            "alreadyMember": {
+              "type": "boolean"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "roomId",
+            "messageId"
+          ],
+          "properties": {
+            "roomId": {
+              "type": "string"
+            },
+            "messageId": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "error": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "required": [
+            "code",
+            "message",
+            "retryable"
+          ],
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            },
+            "retryable": {
+              "type": "boolean"
+            }
+          }
+        }
+      ]
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

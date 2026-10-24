@@ -1,0 +1,21 @@
+@import "tailwindcss";
+@theme {
+  --color-ink: #07060d; --color-panel: #0f0d1a; --color-line: #221f35;
+  --color-neon: #7cf7d4; --color-violet: #a78bfa; --color-amber: #fbbf24; --color-rose: #fb7185;
+  --font-sans: var(--font-geist-sans); --font-mono: var(--font-geist-mono);
+}
+html, body { background: var(--color-ink); color: #e7e5f4; }
+body {
+  background-image: radial-gradient(circle at 15% -10%, rgba(167,139,250,.18), transparent 40%), radial-gradient(circle at 90% 10%, rgba(124,247,212,.12), transparent 35%),
+    linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+  background-size: auto, auto, 32px 32px, 32px 32px; min-height: 100vh;
+}
+@utility card { @apply rounded-2xl border border-line bg-panel/80 backdrop-blur p-5; }
+@utility btn { @apply inline-flex items-center gap-2 rounded-xl px-4 py-2 font-medium transition; }
+@utility btn-primary { @apply inline-flex items-center gap-2 rounded-xl px-4 py-2 font-medium transition bg-neon text-ink hover:brightness-110; }
+@utility btn-ghost { @apply inline-flex items-center gap-2 rounded-xl px-4 py-2 font-medium transition border border-line hover:border-violet text-zinc-200; }
+@utility input { @apply w-full rounded-xl border border-line bg-ink px-3 py-2 text-sm outline-none focus:border-neon; }
+@utility label { @apply text-xs uppercase tracking-widest text-zinc-400; }
+.glow { text-shadow: 0 0 24px rgba(124,247,212,.45); }
+@keyframes pulse-dot { 0%,100% { opacity: 1 } 50% { opacity: .3 } }
+.live-dot { animation: pulse-dot 1.4s infinite; }
