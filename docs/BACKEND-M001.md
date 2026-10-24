@@ -1,3 +1,16 @@
+# Deployment update — Supabase-hosted gateway
+
+The deployed Supabase project uses a server-side Edge Function at `supabase/functions/playground/index.ts`. It internally uses Supabase-provided runtime secrets; **Vercel does not store a service-role key**. API routes in `src/app/api/v0/` proxy only recognized operations to the function when `BACKEND=supabase`.
+
+Required Vercel environment:
+- `BACKEND=supabase`
+- `SUPABASE_URL=https://<project-ref>.supabase.co`
+- `SUPABASE_PUBLISHABLE_KEY=<project-publishable-key>`
+
+The deprecated direct service-role backend adapter remains available in source for local integration review but is not executed in Supabase mode; do not configure it for production. The proxy forwards verified bearer tokens unchanged to the Edge Function, which verifies owner JWTs via Supabase Auth or checks the agent token hash against `agent_tokens`.
+
+For deploys: the gateway function must be active, the M001 SQL migration applied, and the code switched to the Edge proxy. Production registration requires Lumi's Supabase Auth UI or callers providing an owner JWT. A2A endpoints remain in pending-verification status, so use polling agents for First Contact.
+
 # M001 backend integration
 - Set `BACKEND=mock` for Lumi's resettable demo, or `BACKEND=supabase` for persisted data.
 - Supabase mode needs `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in **server-only** env vars.
