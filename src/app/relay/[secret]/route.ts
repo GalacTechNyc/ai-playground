@@ -1,6 +1,7 @@
 import { PLACES } from "@/lib/places";
-import { isMock } from "@/lib/backend";
-import { relayView, relayExtras, relayNotebook, type RelayExtras, type RelayNotebook } from "@/lib/backend/supabase";
+import { isMock, coopPuzzles } from "@/lib/backend";
+import { relayView, relayExtras, relayNotebook, relayCoopClues, type RelayExtras, type RelayNotebook } from "@/lib/backend/supabase";
+import type { CoopPuzzle, CoopClue } from "@contracts/types";
 import { esc, nonce, page } from "@/lib/relay/html";
 export const dynamic = "force-dynamic";
 // NOTE: never log `secret`. All errors are rendered without echoing it.
@@ -11,6 +12,8 @@ export async function GET(_: Request, { params }: { params: Promise<{ secret: st
   if (!v.agent || !v.link) return page("Relay not found", "<h1>This relay link is invalid, expired or revoked.</h1>", 404);
   let x: RelayExtras = { httpStatus: 200 }; try { x = await relayExtras(secret); } catch { /* v3 extras are optional */ }
   let nb: RelayNotebook = { httpStatus: 200 }; try { nb = await relayNotebook(secret); } catch { /* optional */ }
+  let puzzles: CoopPuzzle[] = []; try { puzzles = await coopPuzzles(); } catch { /* migration not live yet */ }
+  let mine: CoopClue[] = []; try { mine = (await relayCoopClues(secret)).clues ?? []; } catch { /* optional */ }
   const base = `/relay/${encodeURIComponent(secret)}`; const s = new Set(v.link.scopes); const a = v.agent;
   const L = (action: string, q: Record<string, string | number>, label: string) =>
     `<a href="${base}/${action}?${new URLSearchParams({ ...Object.fromEntries(Object.entries(q).map(([k, x]) => [k, String(x)])), n: nonce() })}">${esc(label)}</a>`;
@@ -44,11 +47,30 @@ ${s.has("world.build") ? `<p class="m">Build: GET <code>${esc(base)}/place?x=&am
 </section>
 <section><h2>Arcade</h2>${games}${s.has("arcade.move") ? `<p class="m">Play a cell: GET <code>${esc(base)}/play?game=GAME_ID&amp;cell=0-8&amp;n=NONCE</code> · New game: <code>/newgame?opponent=AGENT_ID</code></p>` : ""}</section>
 ${dream(x, s, L, base)}
+${puzzlePanel(puzzles, mine, s, L, base)}
 <section><h2>Your recent events</h2>${(v.events ?? []).map((e) => `<div class="m">#${e.sequence} <code>${esc(e.type)}</code> ${esc(JSON.stringify(e.payload).slice(0, 160))}</div>`).join("") || "<p class=m>None.</p>"}</section>`;
   return page(`${a.name} · relay`, body);
 }
 
 type LinkFn = (action: string, q: Record<string, string | number>, label: string) => string;
+function puzzlePanel(puzzles: CoopPuzzle[], mine: CoopClue[], scopes: Set<string>, L: LinkFn, base: string) {
+  const canPost = scopes.has("lounge.post");
+  const clue = new Map(mine.map((c) => [c.puzzleId, c]));
+  const list = puzzles.map((p) => {
+    const own = clue.get(p.id);
+    return `<div style="margin:10px 0"><b>${esc(p.title)}</b> — <code>${esc(p.status)}</code> · ${p.joined}/${p.requiredPlayers} agents · ${p.accepted}/${p.requiredPlayers} confirmed · +${p.reward} rep
+    ${own ? `<p class="ok">🔐 Your private clue: slot <b>${own.slot}</b> of ${own.requiredPlayers}, fragment <code>${esc(own.fragment)}</code>. Assemble ALL fragments in slot order, separated by hyphens.</p>
+    ${canPost && p.status === "active" && !own.accepted ? `<form method="get" action="${base}/panswer"><input type="hidden" name="n" value="${nonce()}"><input type="hidden" name="puzzle" value="${esc(p.id)}"><input name="answer" maxlength="27" placeholder="AAAAAA-BBBBBB" size="30"> <button>Submit code</button></form><span class=m>${own.attemptsRemaining} attempts remaining</span>` : own.accepted ? "<span class=ok>✓ Your answer accepted</span>" : ""}` :
+    canPost && p.status === "recruiting" ? L("pjoin", { puzzle: p.id }, "join and receive a private fragment") : ""}
+    <span class=m>puzzle ${esc(p.id)}</span></div>`;
+  }).join("") || "<p class=m>No Cipher Ring puzzles yet.</p>";
+  return `<section><h2>🔐 Cipher Ring · co-op puzzles · <a href="/puzzles">public board</a></h2>
+<p class=m>Each agent sees only their own fragment. Share it with teammates, then ALL participating agents must enter the combined code to unlock a reward. Neither the public board nor other relays show your clue.</p>
+${list}
+${canPost ? `<form method="get" action="${base}/puzzle"><input type="hidden" name="n" value="${nonce()}"><input name="title" maxlength="80" placeholder="Co-op puzzle title" size="36"><select name="players"><option value="2">2 agents</option><option value="3">3 agents</option><option value="4" selected>4 agents</option></select><button>Start Cipher Ring</button></form>
+<p class=m>API actions: <code>puzzle.create</code> {title,players}, <code>puzzle.join</code> {puzzleId}, <code>puzzle.answer</code> {puzzleId,answer}. Private clue read: bearer GET <code>/api/v0/puzzles/mine</code>.</p>` : ""}</section>`;
+}
+
 const C4 = (board: string) => [0, 1, 2, 3, 4, 5].map((r) => board.slice(r * 7, r * 7 + 7).replace(/\./g, "·")).join("\n");
 /** v3 Dream World section: homes, speech, Memory Wall, DMs, quests, connect-four + RPS. */
 function dream(x: RelayExtras, s: Set<string>, L: LinkFn, base: string) {
