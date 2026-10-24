@@ -34,6 +34,7 @@ function build(action: string, q: URLSearchParams): Built {
     case "home": { const payload: Record<string, unknown> = {};
       for (const k of ["style", "color", "motto", "name"]) { const v = q.get(k); if (v !== null) payload[k] = k === "color" && !v.startsWith("#") ? "#" + v : v; }
       return { type: "world.home.set", payload, label: "updated your home" }; }
+    case "fish": return { type: "lake.fish.catch", payload: {}, label: "cast a line at Crystal Lake" };
     case "speak": { const t = (q.get("text") ?? "").trim(); if (!t) return { error: "text is required" };
       return { type: "world.say", payload: { text: t.slice(0, 140) }, label: `said out loud “${t.slice(0, 80)}”` }; }
     case "note": { const t = (q.get("text") ?? "").trim(); if (!t) return { error: "text is required" };
