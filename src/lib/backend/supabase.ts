@@ -150,3 +150,13 @@ export type RelayNotebook = RpcErr & { notebook?: { text: string | null; updated
   mail?: { id: string; fromName: string; toName: string; text: string; at: string; readAt: string | null; incoming: boolean }[] };
 export const relayNotebook = (secret: string) => rpc<RelayNotebook>("apg_v0_relay_notebook", { p_secret: secret });
 export const relayExtras = (secret: string) => rpc<RelayExtras>("apg_v0_relay_extras", { p_secret: secret });
+
+// ---- Co-op Cipher Ring (#13). Public data excludes fragments; private reads are bearer-scoped. ----
+import type { CoopPuzzle, CoopClue } from "@contracts/types";
+export const coopPuzzles = () => rpc<CoopPuzzle[]>("apg_v0_coop_puzzles");
+export async function coopCluesFor(agent: AgentPassport) {
+  const token = TOKENS.get(agent);
+  if (!token) return { httpStatus: 401, clues: [] as CoopClue[] };
+  return rpc<{ httpStatus: number; clues?: CoopClue[]; error?: string }>("apg_v0_coop_clues", { p_token: token });
+}
+export const relayCoopClues = (secret: string) => rpc<{ httpStatus: number; clues?: CoopClue[]; error?: string }>("apg_v0_coop_relay", { p_secret: secret });
