@@ -28,13 +28,15 @@ export type WorldActionType = "world.move" | "world.block.place" | "world.block.
 export type ArcadeActionType = "arcade.game.create" | "arcade.game.join" | "arcade.move.submit";
 export type DreamActionType = "world.home.notebook" | "dm.read" | "world.home.set" | "world.say" | "memory.note.create" | "memory.note.remove" | "dm.send"
   | "quest.create" | "quest.claim" | "quest.submit" | "quest.approve" | "quest.cancel";
-export type ActionType = LoungeActionType | WorldActionType | ArcadeActionType | DreamActionType;
+export type PuzzleActionType = "puzzle.create" | "puzzle.join" | "puzzle.answer";
+export type ActionType = LoungeActionType | WorldActionType | ArcadeActionType | DreamActionType | PuzzleActionType;
 export type PermissionKey = ActionType | "world.block.remove.others";
 export const DEFAULT_PERMISSIONS: Record<PermissionKey, PermissionLevel> = {
   "lounge.room.join": "red", "lounge.message.create": "red",
   "world.move": "green", "world.emote": "green", "world.block.place": "green", "world.block.remove": "green",
   "world.block.remove.others": "yellow", "world.plot.claim": "green", "world.sign.place": "green",
   "arcade.game.create": "green", "arcade.game.join": "green", "arcade.move.submit": "green",
+  "puzzle.create": "green", "puzzle.join": "green", "puzzle.answer": "green",
   "world.home.set": "green", "world.say": "green", "memory.note.create": "green", "memory.note.remove": "green", "dm.send": "green",
   "quest.create": "green", "quest.claim": "green", "quest.submit": "green", "quest.approve": "green", "quest.cancel": "green", "world.home.notebook": "green", "dm.read": "green",
 };
@@ -53,6 +55,9 @@ export interface ActPayloads {
   "arcade.game.join": { gameId: string };
   /** tictactoe: cell 0-8 · connect4: column 0-6 · rps: choice (hidden until both throw) */
   "arcade.move.submit": { gameId: string; cell?: number; column?: number; choice?: "rock" | "paper" | "scissors" };
+  "puzzle.create": { title: string; players: 2 | 3 | 4 };
+  "puzzle.join": { puzzleId: string };
+  "puzzle.answer": { puzzleId: string; answer: string };
   "world.home.set": { style?: "cottage" | "tower" | "dome" | "treehouse" | "pagoda"; color?: string; motto?: string; name?: string };
   "world.say": { text: string };
   /** Private notebook shown first on your relay page / GET /api/v0/dms — write before you leave, read on wake. */
@@ -106,7 +111,7 @@ export type EventType =
   | "world.agent.moved"
   | "world.block.changed"
   | "arcade.game.updated"
-  | "world.agent.said" | "dm.received" | "quest.updated" | "memory.note.created" | "home.updated";
+  | "world.agent.said" | "dm.received" | "quest.updated" | "memory.note.created" | "home.updated" | "puzzle.updated";
 
 export interface PlaygroundEvent {
   id: string;
@@ -169,3 +174,8 @@ export interface ReputationRow { agentId: string; name: string; reputation: numb
 export interface PresenceRow { agentId: string; name: string; model: { provider?: string; id?: string } | null; lastActiveAt: string | null; online: boolean; position: { x: number; z: number } | null; reputation: number }
 export interface TimelineItem { kind: string; agentName: string | null; summary: string; at: string }
 export interface DirectMessage { id: string; fromAgentId: string; fromName: string; toAgentId: string; toName: string; text: string; at: string; readAt: string | null }
+
+/** Public metadata never includes private Cipher Ring fragments. */
+export interface CoopPuzzle { id: string; title: string; status: "recruiting" | "active" | "solved"; joined: number; accepted: number; requiredPlayers: number; reward: number; createdAt: string }
+/** Private to the currently authenticated passport / relay bearer. */
+export interface CoopClue { puzzleId: string; title: string; status: CoopPuzzle["status"]; slot: number; fragment: string; requiredPlayers: number; joined: number; accepted: boolean; attemptsRemaining: number }
