@@ -4,8 +4,9 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BLOCK_TYPES, type BlockHistoryEntry, type BlockType, type WorldState } from "@contracts/types";
 import { useOwner } from "@/lib/useOwner";
-import { BLOCK_STYLE, PORTALS, agentHue } from "./blocks";
-import type { BuildIntent } from "./Scene";
+import { BLOCK_STYLE, PORTALS, agentHue, blockStyle } from "./blocks";
+import type { BuildIntent, Quality } from "./Scene";
+import SceneBoundary from "./SceneBoundary";
 import { input } from "./controls";
 import { PLACES } from "@/lib/places";
 
@@ -33,7 +34,7 @@ function MiniMap({ s }: { s: WorldState | null }) {
       <circle cx={P(-18)} cy={P(26)} r={8 * sc} fill="#38bdf8" />
       {PLACES.map((p) => <text key={p.id} x={P(p.x)} y={P(p.z)} fontSize={6} fill={p.color} textAnchor="middle">{p.id === "spawn" || p.id === "lookout" ? "" : p.label}</text>)}
       {s?.plots.map((p) => <rect key={p.agentId} x={P(p.x0)} y={P(p.z0)} width={8 * sc} height={8 * sc} fill={`hsl(${agentHue(p.agentName)},70%,55%)`} opacity={0.35} />)}
-      {s?.blocks.map((b, i) => <rect key={i} x={P(b.x)} y={P(b.z)} width={Math.max(1, sc)} height={Math.max(1, sc)} fill={BLOCK_STYLE[b.blockType].color} />)}
+      {s?.blocks.map((b, i) => <rect key={i} x={P(b.x)} y={P(b.z)} width={Math.max(1, sc)} height={Math.max(1, sc)} fill={blockStyle(b.blockType).color} />)}
       {PORTALS.map((p) => <circle key={p.id} cx={P(p.pos[0])} cy={P(p.pos[2])} r={2.5} fill={p.color} />)}
       {s?.agents.map((a) => <g key={a.agentId}><circle cx={P(a.x)} cy={P(a.z)} r={3} fill={`hsl(${agentHue(a.name)},85%,62%)`} stroke="#fff" strokeWidth={0.6} />
         <text x={P(a.x) + 4} y={P(a.z) - 3} fontSize={7} fill="#e7e5f4">{a.name}</text></g>)}
@@ -48,6 +49,14 @@ export default function WorldClient() {
   const [myAgents, setMyAgents] = useState<{ id: string; name: string }[]>([]); const [agentId, setAgentId] = useState("");
   const [toast, setToast] = useState(""); const [history, setHistory] = useState<{ at: string; rows: BlockHistoryEntry[] } | null>(null);
   const [bloom, setBloom] = useState(true);
+  const [quality, setQualityState] = useState<Quality>("high");
+  useEffect(() => {
+    const saved = typeof window !== "undefined" ? window.localStorage.getItem("ap.quality") : null;
+    if (saved === "high" || saved === "low") return setQualityState(saved);
+    const touch = window.matchMedia?.("(pointer: coarse)").matches || window.innerWidth < 768;
+    if (touch) setQualityState("low");
+  }, []);
+  const setQuality = (q: Quality) => { setQualityState(q); try { window.localStorage.setItem("ap.quality", q); } catch {} };
   const [bubbles, setBubbles] = useState<Record<string, string>>({});
   useEffect(() => {
     const pull = () => Promise.all(["lobby", "dev"].map((r) => fetch(`/api/v0/rooms/${r}/messages`, { cache: "no-store" }).then((x) => x.json()).catch(() => ({}))))
@@ -85,7 +94,7 @@ export default function WorldClient() {
 
   return (
     <div className="fixed inset-x-0 bottom-0 top-[57px] z-10 overflow-hidden">
-      <Scene state={s} onIntent={onIntent} onNavigate={(h) => router.push(h)} building={building} bloom={bloom} bubbles={bubbles} />
+      <SceneBoundary><Scene state={s} onIntent={onIntent} onNavigate={(h) => router.push(h)} building={building} bloom={bloom} bubbles={bubbles} quality={quality} /></SceneBoundary>
       <Joystick />
       {/* HUD */}
       <div className="pointer-events-none absolute left-4 top-4 space-y-2">
@@ -97,6 +106,7 @@ export default function WorldClient() {
           <div className="mt-2 flex gap-2">
             <button onClick={() => setBuilding((b) => !b)} className={building ? "btn-primary !py-1 text-sm" : "btn-ghost !py-1 text-sm"}>{building ? "Building ✓" : "Builder mode"}</button>
             <button onClick={() => setBloom((b) => !b)} className="btn-ghost !py-1 text-sm">{bloom ? "Bloom on" : "Bloom off"}</button>
+            <button onClick={() => setQuality(quality === "high" ? "low" : "high")} title="Low quality turns off shadows and bloom and lowers resolution for phones" className="btn-ghost !py-1 text-sm">{quality === "high" ? "Quality: High" : "Quality: Low"}</button>
           </div>
         </div>
         {building && (

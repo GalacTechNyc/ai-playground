@@ -5,7 +5,7 @@ import { Billboard, OrbitControls, Text, Sparkles, Stars } from "@react-three/dr
 import { EffectComposer, Bloom, Vignette } from "@react-three/postprocessing";
 import * as THREE from "three";
 import type { BlockType, WorldAgent, WorldBlock, WorldSign, WorldState } from "@contracts/types";
-import { BLOCK_STYLE, PORTALS, agentHue } from "./blocks";
+import { BLOCK_STYLE, PORTALS, agentHue, blockStyle } from "./blocks";
 import Island, { ISLAND_R } from "./Island";
 import { INTERACTABLES } from "./interactables";
 import { input, player } from "./controls";
@@ -20,7 +20,7 @@ export type BuildIntent = { kind: "place"; x: number; y: number; z: number } | {
 
 function BlockLayer({ type, blocks, onPick }: { type: BlockType; blocks: WorldBlock[]; onPick?: (e: ThreeEvent<PointerEvent>, b: WorldBlock) => void }) {
   const ref = useRef<THREE.InstancedMesh>(null);
-  const style = BLOCK_STYLE[type];
+  const style = blockStyle(type);
   useEffect(() => {
     const m = ref.current; if (!m) return; const o = new THREE.Object3D();
     blocks.forEach((b, i) => { o.position.set(b.x + 0.5, b.y + 0.5, b.z + 0.5); o.updateMatrix(); m.setMatrixAt(i, o.matrix); });
@@ -132,7 +132,7 @@ function Player({ building }: { building: boolean }) {
   </group>);
 }
 
-function DayNight() {
+function DayNight({ low = false }: { low?: boolean }) {
   const sun = useRef<THREE.DirectionalLight>(null); const hemi = useRef<THREE.HemisphereLight>(null);
   const { scene } = useThree();
   const day = useMemo(() => new THREE.Color("#8fd3ff"), []), dusk = useMemo(() => new THREE.Color("#f59e8b"), []), night = useMemo(() => new THREE.Color("#0b1030"), []);
@@ -148,7 +148,7 @@ function DayNight() {
   });
   return (<>
     <hemisphereLight ref={hemi} args={["#dbeafe", "#3f6212", 0.9]} />
-    <directionalLight ref={sun} position={[30, 50, 20]} intensity={2} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-60} shadow-camera-right={60} shadow-camera-top={60} shadow-camera-bottom={-60} shadow-camera-far={200} />
+    <directionalLight ref={sun} position={[30, 50, 20]} intensity={2} castShadow={!low} shadow-mapSize={low ? [1024, 1024] : [2048, 2048]} shadow-camera-left={-60} shadow-camera-right={60} shadow-camera-top={60} shadow-camera-bottom={-60} shadow-camera-far={200} />
   </>);
 }
 
@@ -180,13 +180,16 @@ function stackedSigns(signs: WorldSign[]) {
   return placed;
 }
 
-export default function Scene({ state, onIntent, onNavigate, building, bloom, bubbles }: {
-  bubbles?: Record<string, string>; state: WorldState | null; onIntent: (i: BuildIntent) => void; onNavigate: (href: string) => void; building: boolean; bloom: boolean;
+export type Quality = "high" | "low";
+
+export default function Scene({ state, onIntent, onNavigate, building, bloom, bubbles, quality = "high" }: {
+  quality?: Quality; bubbles?: Record<string, string>; state: WorldState | null; onIntent: (i: BuildIntent) => void; onNavigate: (href: string) => void; building: boolean; bloom: boolean;
 }) {
   const byType = useMemo(() => {
     const m = new Map<BlockType, WorldBlock[]>(); for (const b of state?.blocks ?? []) { if (!m.has(b.blockType)) m.set(b.blockType, []); m.get(b.blockType)!.push(b); } return m;
   }, [state?.blocks]);
   const [hover] = useState(false);
+  const low = quality === "low";
   const pickBlock = (e: ThreeEvent<PointerEvent>, b: WorldBlock) => {
     if (!building) return onIntent({ kind: "inspect", x: b.x, y: b.y, z: b.z });
     if (e.button === 2 || e.shiftKey) return onIntent({ kind: "remove", x: b.x, y: b.y, z: b.z });
@@ -195,10 +198,10 @@ export default function Scene({ state, onIntent, onNavigate, building, bloom, bu
   };
   const pickGround = (e: ThreeEvent<PointerEvent>) => { if (!building || e.button !== 0) return; e.stopPropagation(); onIntent({ kind: "place", x: Math.floor(e.point.x), y: 0, z: Math.floor(e.point.z) }); };
   return (
-    <Canvas shadows dpr={[1, 1.75]} camera={{ position: [0, 7, 19], fov: 55 }} onContextMenu={(e) => e.preventDefault()} gl={{ antialias: true }}>
+    <Canvas key={quality} shadows={!low} dpr={low ? [0.75, 1] : [1, 1.75]} camera={{ position: [0, 7, 19], fov: 55 }} onContextMenu={(e) => e.preventDefault()} gl={{ antialias: !low, powerPreference: low ? "low-power" : "high-performance" }}>
       <fog attach="fog" args={["#8fd3ff", 60, 160]} />
-      <Stars radius={150} depth={40} count={1500} factor={4} fade speed={0.5} />
-      <DayNight />
+      <Stars radius={150} depth={40} count={low ? 400 : 1500} factor={4} fade speed={0.5} />
+      <DayNight low={low} />
       <Island onGround={pickGround} />
       <Player building={building} />
       {(state?.plots ?? []).map((p) => (
@@ -221,7 +224,7 @@ export default function Scene({ state, onIntent, onNavigate, building, bloom, bu
         onLaunch={(_, impulse) => { player.impulse = { ...impulse }; }} onEnterPortal={(portal) => onNavigate(portal.href)} />
       {(state?.agents ?? []).map((a) => <Avatar key={a.agentId} a={a} bubble={a.say || bubbles?.[a.agentId]} />)}
       <OrbitControls makeDefault enableDamping maxPolarAngle={Math.PI / 2.05} minDistance={3} maxDistance={70} target={[0, 1.6, 8]} enablePan={false} />
-      {bloom && !hover && (
+      {bloom && !low && !hover && (
         <EffectComposer multisampling={0}>
           <Bloom intensity={0.6} luminanceThreshold={0.85} luminanceSmoothing={0.2} mipmapBlur />
           <Vignette eskil={false} offset={0.3} darkness={0.4} />

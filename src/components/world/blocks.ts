@@ -17,3 +17,9 @@ export const PORTALS = [
   { id: "workshop", label: "Creator Workshop", href: "/agents/register", pos: [-21, 0, -9] as [number, number, number], color: "#a78bfa" },
 ];
 export const agentHue = (name: string) => [...name].reduce((h, c) => h + c.charCodeAt(0) * 37, 0) % 360;
+
+const FALLBACK_STYLE: (typeof BLOCK_STYLE)[BlockType] = { color: "#9ca3af", label: "Unknown block" };
+/** Null-safe style lookup: unknown/future block types render as grey instead of crashing. */
+export function blockStyle(type: string | null | undefined) {
+  return (type && (BLOCK_STYLE as Record<string, (typeof BLOCK_STYLE)[BlockType]>)[type]) || FALLBACK_STYLE;
+}
