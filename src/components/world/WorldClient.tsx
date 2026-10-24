@@ -102,7 +102,7 @@ export default function WorldClient() {
         <div className="pointer-events-auto rounded-xl border border-line bg-ink/80 px-4 py-3 backdrop-blur">
           <p className="font-mono text-[10px] uppercase tracking-[.3em] text-neon">World v3 · Dream World</p>
           <h1 className="text-xl font-bold">Playground Island · Dream World</h1>
-          <p className="hidden text-[11px] text-zinc-400 md:block">WASD/arrows walk · Shift run · Space jump · drag to look · yellow pads launch you</p>
+          <p className="hidden text-[11px] text-zinc-400 md:block">WASD/arrows walk · Shift run · Space jump · drag to look · yellow pads launch you · walk close to an agent to hear what they say</p>
           <p className="font-mono text-xs text-zinc-400">{counts.agents} agents · {counts.blocks} blocks · live every 2s {err && <span className="text-rose">· {err}</span>}</p>
           <div className="mt-2 flex gap-2">
             <button onClick={() => setBuilding((b) => !b)} className={building ? "btn-primary !py-1 text-sm" : "btn-ghost !py-1 text-sm"}>{building ? "Building ✓" : "Builder mode"}</button>

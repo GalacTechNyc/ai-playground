@@ -18,6 +18,7 @@ import CipherRingTerminal from "./CipherRingTerminal";
 import Lake from "./Lake";
 import { boat, clampToLake, inLake, onDock, DOCK } from "./lake";
 import Accessory from "./Accessories";
+import { hearing, heardText, type Hearing } from "./proximity";
 import { gait, hop, outfitFor, walkIntensity } from "./outfits";
 import type { PortalStation } from "@/lib/world/traversal";
 
@@ -69,6 +70,7 @@ function Avatar({ a, bubble, low = false }: { a: WorldAgent; bubble?: string; lo
   const color = useMemo(() => new THREE.Color(`hsl(${agentHue(a.name)}, 80%, 58%)`), [a.name]);
   const emote = a.emote && Date.now() - Date.parse(a.updatedAt) < 20000 ? a.emote : null;
   // Walk target: the server position (anchor) or, when idle there, a nearby wander spot.
+  const [hear, setHear] = useState<Hearing>("clear");
   const wander = useRef({ tx: a.x, tz: a.z, ax: a.x, az: a.z, idleUntil: 0, seed: (agentHue(a.name) % 97) + 1, wasTravelling: false, hopAt: -10 });
   useFrame((s, dt) => {
     const o = g.current; if (!o) return; dt = Math.min(dt, 0.05);
@@ -103,8 +105,10 @@ function Avatar({ a, bubble, low = false }: { a: WorldAgent; bubble?: string; lo
       body.current.position.y = gy + h.y;
       body.current.scale.set(h.sx, h.sy, h.sx);
       body.current.rotation.y = emote === "dance" ? t * 4 : 0; }
+    const h2 = hearing(o.position.x - player.pos.x, o.position.z - player.pos.z); if (h2 !== hear) setHear(h2);
     if (Math.abs(walk - anim.walk) > 0.2 || Math.floor(t * 30) !== Math.floor(anim.t * 30)) setAnim({ walk, t });
   });
+  const said = heardText(bubble, hear);
   return (
     <group ref={g} position={[a.x, a.y, a.z]}>
       <group ref={body}><Blocky color={outfit.shirt ?? color} pants={outfit.pants} walk={anim.walk} emote={emote} t={anim.t}><Accessory outfit={outfit} low={low} /></Blocky></group>
@@ -112,10 +116,9 @@ function Avatar({ a, bubble, low = false }: { a: WorldAgent; bubble?: string; lo
       <Billboard position={[0, 2.95, 0]}>
         <Text fontSize={0.36} color="#fff" outlineWidth={0.04} outlineColor="#0b1020" anchorY="bottom">{a.lastActiveAt && Date.now() - Date.parse(a.lastActiveAt) < 600000 ? "● " : "○ "}{a.name}{a.isSimulated ? " (sim)" : ""}</Text>
         {emote && <Text position={[0, 0.45, 0]} fontSize={0.3} color="#fbbf24" anchorY="bottom">✦ {emote}</Text>}
-        {bubble && <group position={[0, emote ? 1.0 : 0.6, 0]}>
-          <Text fontSize={0.3} maxWidth={5} color="#0b1020" anchorY="bottom" textAlign="center">{bubble.length > 90 ? bubble.slice(0, 88) + "…" : bubble}
-</Text>
-          <mesh position={[0, 0.35, -0.02]}><planeGeometry args={[5.4, Math.ceil(Math.min(bubble.length, 90) / 22) * 0.4 + 0.3]} /><meshBasicMaterial color="#ffffff" transparent opacity={0.92} /></mesh>
+        {said && <group position={[0, emote ? 1.0 : 0.6, 0]}>
+          <Text fontSize={0.3} maxWidth={5} color="#0b1020" anchorY="bottom" textAlign="center">{said}</Text>
+          <mesh position={[0, 0.35, -0.02]}><planeGeometry args={[hear === "clear" ? 5.4 : 1.4, hear === "clear" ? Math.ceil(said.length / 22) * 0.4 + 0.3 : 0.6]} /><meshBasicMaterial color="#ffffff" transparent opacity={hear === "clear" ? 0.92 : 0.55} /></mesh>
         </group>}
       </Billboard>
     </group>
