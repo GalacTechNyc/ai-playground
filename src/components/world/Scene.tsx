@@ -45,29 +45,57 @@ function BlockLayer({ type, blocks, onPick }: { type: BlockType; blocks: WorldBl
 }
 
 const SPEED = 4.5;
-function Blocky({ color, walk, emote, t, jump = 0, pants = "#1e293b", children }: { color: THREE.Color | string; walk: number; emote: string | null; t: number; jump?: -1 | 0 | 1; pants?: string; children?: ReactNode }) {
-  const gt = gait(walk);
-  const sw = Math.sin(t * gt.freq) * gt.amp;
-  const airborneArms = jump > 0 ? -0.95 : jump < 0 ? -0.35 : 0;
-  const airborneLegs = jump > 0 ? 0.42 : jump < 0 ? -0.15 : 0;
-  const wave = emote === "wave" ? -2.6 + Math.sin(t * 8) * 0.4 : emote === "cheer" ? -2.9 : 0;
+type AvatarMotion = { walk: number; jump: -1 | 0 | 1 };
+
+/** Animate mesh groups directly in the R3F frame loop. This avoids the old
+ * per-avatar setState(30 fps) that re-rendered labels, accessories and Text. */
+function Blocky({ color, emote, pants = "#1e293b", motion, children }: {
+  color: THREE.Color | string; emote: string | null; pants?: string;
+  motion: React.RefObject<AvatarMotion>; children?: ReactNode;
+}) {
+  const root = useRef<THREE.Group>(null);
+  const rightArm = useRef<THREE.Group>(null);
+  const leftArm = useRef<THREE.Group>(null);
+  const rightLeg = useRef<THREE.Group>(null);
+  const leftLeg = useRef<THREE.Group>(null);
+
+  useFrame((state) => {
+    const { walk, jump } = motion.current;
+    const t = state.clock.elapsedTime;
+    const gt = gait(walk);
+    const sw = Math.sin(t * gt.freq) * gt.amp;
+    const airborneArms = jump > 0 ? -0.95 : jump < 0 ? -0.35 : 0;
+    const airborneLegs = jump > 0 ? 0.42 : jump < 0 ? -0.15 : 0;
+    const wave = emote === "wave" ? -2.6 + Math.sin(t * 8) * 0.4 : emote === "cheer" ? -2.9 : 0;
+    if (root.current) root.current.rotation.x = gt.lean + (jump > 0 ? -0.12 : jump < 0 ? 0.08 : 0);
+    if (rightArm.current) {
+      rightArm.current.rotation.x = jump ? airborneArms : emote ? 0 : sw;
+      rightArm.current.rotation.z = wave ? -wave * 0.35 : 0;
+    }
+    if (leftArm.current) {
+      leftArm.current.rotation.x = jump ? airborneArms : -sw;
+      leftArm.current.rotation.z = emote === "cheer" ? 1 : 0;
+    }
+    if (rightLeg.current) rightLeg.current.rotation.x = jump ? airborneLegs : -sw;
+    if (leftLeg.current) leftLeg.current.rotation.x = jump ? -airborneLegs : sw;
+  });
   const skin = "#ffd7b0";
-  return (<group rotation-x={gt.lean + (jump > 0 ? -0.12 : jump < 0 ? 0.08 : 0)}>
+  return <group ref={root}>
     <mesh position={[0, 1.35, 0]} castShadow><boxGeometry args={[0.8, 0.9, 0.42]} /><meshStandardMaterial color={color} /></mesh>
     <mesh position={[0, 2.1, 0]} castShadow><boxGeometry args={[0.56, 0.56, 0.56]} /><meshStandardMaterial color={skin} /></mesh>
     <mesh position={[0.13, 2.15, 0.29]}><boxGeometry args={[0.08, 0.1, 0.02]} /><meshBasicMaterial color="#111" /></mesh>
     <mesh position={[-0.13, 2.15, 0.29]}><boxGeometry args={[0.08, 0.1, 0.02]} /><meshBasicMaterial color="#111" /></mesh>
-    <group position={[0.52, 1.75, 0]} rotation-x={jump ? airborneArms : emote ? 0 : sw} rotation-z={wave ? -wave * 0.35 : 0}><mesh position={[0, -0.4, 0]} castShadow><boxGeometry args={[0.24, 0.8, 0.24]} /><meshStandardMaterial color={skin} /></mesh></group>
-    <group position={[-0.52, 1.75, 0]} rotation-x={jump ? airborneArms : -sw} rotation-z={emote === "cheer" ? 1 : 0}><mesh position={[0, -0.4, 0]} castShadow><boxGeometry args={[0.24, 0.8, 0.24]} /><meshStandardMaterial color={skin} /></mesh></group>
-    <group position={[0.2, 0.9, 0]} rotation-x={jump ? airborneLegs : -sw}><mesh position={[0, -0.45, 0]} castShadow><boxGeometry args={[0.3, 0.9, 0.3]} /><meshStandardMaterial color={pants} /></mesh></group>
-    <group position={[-0.2, 0.9, 0]} rotation-x={jump ? -airborneLegs : sw}><mesh position={[0, -0.45, 0]} castShadow><boxGeometry args={[0.3, 0.9, 0.3]} /><meshStandardMaterial color={pants} /></mesh></group>
+    <group ref={rightArm} position={[0.52, 1.75, 0]}><mesh position={[0, -0.4, 0]} castShadow><boxGeometry args={[0.24, 0.8, 0.24]} /><meshStandardMaterial color={skin} /></mesh></group>
+    <group ref={leftArm} position={[-0.52, 1.75, 0]}><mesh position={[0, -0.4, 0]} castShadow><boxGeometry args={[0.24, 0.8, 0.24]} /><meshStandardMaterial color={skin} /></mesh></group>
+    <group ref={rightLeg} position={[0.2, 0.9, 0]}><mesh position={[0, -0.45, 0]} castShadow><boxGeometry args={[0.3, 0.9, 0.3]} /><meshStandardMaterial color={pants} /></mesh></group>
+    <group ref={leftLeg} position={[-0.2, 0.9, 0]}><mesh position={[0, -0.45, 0]} castShadow><boxGeometry args={[0.3, 0.9, 0.3]} /><meshStandardMaterial color={pants} /></mesh></group>
     {children}
-  </group>);
+  </group>;
 }
 
 function Avatar({ a, bubble, low = false, badges }: { a: WorldAgent; bubble?: string; low?: boolean; badges?: readonly string[] }) {
   const g = useRef<THREE.Group>(null); const body = useRef<THREE.Group>(null);
-  const [anim, setAnim] = useState({ walk: 0, t: 0 });
+  const motion = useRef<AvatarMotion>({ walk: 0, jump: 0 });
   const outfit = useMemo(() => outfitFor(a.name, a.agentId, badges), [a.name, a.agentId, badges]);
   const color = useMemo(() => new THREE.Color(`hsl(${agentHue(a.name)}, 80%, 58%)`), [a.name]);
   const emote = a.emote && Date.now() - Date.parse(a.updatedAt) < 20000 ? a.emote : null;
@@ -108,12 +136,12 @@ function Avatar({ a, bubble, low = false, badges }: { a: WorldAgent; bubble?: st
       body.current.scale.set(h.sx, h.sy, h.sx);
       body.current.rotation.y = emote === "dance" ? t * 4 : 0; }
     const h2 = hearing(o.position.x - player.pos.x, o.position.z - player.pos.z); if (h2 !== hear) setHear(h2);
-    if (Math.abs(walk - anim.walk) > 0.2 || Math.floor(t * 30) !== Math.floor(anim.t * 30)) setAnim({ walk, t });
+    motion.current.walk = walk;
   });
   const said = heardText(bubble, hear);
   return (
     <group ref={g} position={[a.x, a.y, a.z]}>
-      <group ref={body}><Blocky color={outfit.shirt ?? color} pants={outfit.pants} walk={anim.walk} emote={emote} t={anim.t}><Accessory outfit={outfit} low={low} /></Blocky></group>
+      <group ref={body}><Blocky color={outfit.shirt ?? color} pants={outfit.pants} motion={motion} emote={emote}><Accessory outfit={outfit} low={low} /></Blocky></group>
       <mesh rotation-x={-Math.PI / 2} position={[0, 0.05, 0]}><ringGeometry args={[0.55, 0.7, 32]} /><meshBasicMaterial color={outfit.shirt ?? color} transparent opacity={0.7} toneMapped={false} /></mesh>
       <Billboard position={[0, 2.95, 0]}>
         <Text fontSize={0.36} color="#fff" outlineWidth={0.04} outlineColor="#0b1020" anchorY="bottom">{a.lastActiveAt && Date.now() - Date.parse(a.lastActiveAt) < 600000 ? "● " : "○ "}{a.name}{a.isSimulated ? " (sim)" : ""}</Text>
@@ -129,7 +157,7 @@ function Avatar({ a, bubble, low = false, badges }: { a: WorldAgent; bubble?: st
 
 function Player({ building }: { building: boolean }) {
   const g = useRef<THREE.Group>(null); const vel = useRef({ vy: 0, y: 0, vx: 0, vz: 0 });
-  const [anim, setAnim] = useState({ walk: 0, t: 0, jump: 0 as -1 | 0 | 1 });
+  const motion = useRef<AvatarMotion>({ walk: 0, jump: 0 });
   const { camera, controls } = useThree() as unknown as { camera: THREE.Camera; controls: { target: THREE.Vector3; update: () => void } | null };
   const keys = useRef(new Set<string>());
   useEffect(() => {
@@ -175,10 +203,10 @@ function Player({ building }: { building: boolean }) {
     const walk = mv.lengthSq() > 0.0001 && !boat.riding && v.y <= 0.401 ? (k.has("ShiftLeft") || input.run ? 1.5 : 1) : 0; const t = s.clock.elapsedTime;
     const floorHere = onDock(o.position.x, o.position.z) ? DOCK.top : 0;
     const jump = boat.riding || swimming ? 0 : jumpPhase(v.y - floorHere, v.vy);
-    if (walk !== anim.walk || jump !== anim.jump || Math.floor(t * 30) !== Math.floor(anim.t * 30)) setAnim({ walk, jump, t });
+    motion.current.walk = walk; motion.current.jump = jump;
   });
   return (<group ref={g} position={[0, 0, 8]}>
-    <Blocky color={color} walk={anim.walk} jump={anim.jump} emote={null} t={anim.t} />
+    <Blocky color={color} motion={motion} emote={null} />
     <Billboard position={[0, 2.75, 0]}><Text fontSize={0.34} color="#7cf7d4" outlineWidth={0.04} outlineColor="#0b1020" anchorY="bottom">{building ? "You (builder)" : "You"}</Text></Billboard>
   </group>);
 }
