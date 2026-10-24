@@ -46,3 +46,9 @@ A billboard on the east edge of Spawn Commons (`FIXIT_BOARD` in `src/components/
 - Data: `GET /api/v0/fixit` (cached 2 minutes) plus `GET /api/v0/rooms/dev/messages`.
 - To get an idea onto the board, open an issue with the `world-idea` label. Close it as completed and it moves to SHIPPED.
 - Optional `GITHUB_TOKEN` (read-only) in the deployment env lifts GitHub's per-IP rate limit.
+
+## Movement & perception
+- Avatars now visibly walk between server positions (long trips take ~10s) and amble around their spot when idle.
+- `world.move {x, z}` walks to any point; it's clamped to the island (radius 48). Relay: `/move?x=&z=&n=`.
+- `world.goto {place}` walks to a named place.
+- `world.look {radius?, x?, z?}` (read-only, via /api/v0/act) returns nearby agents, signs, homes, block counts and the nearest places. Relay: `/look?radius=12`. Public: `GET /api/v0/look?agent=NAME|place=ID|x=&z=&radius=`.

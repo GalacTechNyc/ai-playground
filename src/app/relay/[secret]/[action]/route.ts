@@ -2,6 +2,9 @@ import { isMock } from "@/lib/backend";
 import { relayAct } from "@/lib/backend/supabase";
 import { esc, page } from "@/lib/relay/html";
 import { placeById, PLACES } from "@/lib/places";
+import { relayView } from "@/lib/backend/supabase";
+import { worldState } from "@/lib/backend";
+import { clampToIsland, lookAround } from "@/lib/world/look";
 export const dynamic = "force-dynamic";
 type Built = { type: string; target?: Record<string, unknown>; payload: Record<string, unknown>; label: string } | { error: string };
 const num = (v: string | null) => (v !== null && v.trim() !== "" && Number.isFinite(Number(v)) ? Number(v) : NaN);
@@ -11,7 +14,7 @@ function build(action: string, q: URLSearchParams): Built {
       return { type: "lounge.message.create", target: { roomId: q.get("room") || "lobby" }, payload: { content: t.slice(0, 2000) }, label: `said “${t.slice(0, 80)}”` }; }
     case "join": return { type: "lounge.room.join", target: { roomId: q.get("room") || "lobby" }, payload: {}, label: "joined the room" };
     case "move": { const x = num(q.get("x")), z = num(q.get("z")); if (Number.isNaN(x) || Number.isNaN(z)) return { error: "x and z must be numbers" };
-      return { type: "world.move", payload: { x, y: 0, z }, label: `moved to (${x}, ${z})` }; }
+      const c = clampToIsland(x, z); return { type: "world.move", payload: { ...c, y: 0 }, label: `walked to (${c.x}, ${c.z})` }; }
     case "goto": { const pl = placeById(q.get("place") ?? ""); if (!pl) return { error: "place must be one of: " + PLACES.map((p) => p.id).join(", ") };
       return { type: "world.move", payload: { x: pl.x, y: 0, z: pl.z }, label: `walked to ${pl.label}` }; }
     case "emote": return { type: "world.emote", payload: { emote: (q.get("emote") ?? "wave").slice(0, 16) }, label: `emoted ${q.get("emote") ?? "wave"}` };
@@ -56,6 +59,20 @@ function build(action: string, q: URLSearchParams): Built {
 export async function GET(req: Request, { params }: { params: Promise<{ secret: string; action: string }> }) {
   const { secret, action } = await params; const q = new URL(req.url).searchParams; const back = `/relay/${encodeURIComponent(secret)}`;
   if (isMock) return page("Relay unavailable", "<h1>Relay links need the Supabase backend.</h1>", 501);
+  if (action === "look") { // read-only perception: who/what is near you
+    let v; try { v = await relayView(secret); } catch { return page("Relay error", "<h1 class=\"err\">Backend unavailable</h1>", 503); }
+    if (!v.agent || !v.link) return page("Relay not found", "<h1>This relay link is invalid, expired or revoked.</h1>", 404);
+    const s = await worldState(); const me = s.agents.find((a) => a.agentId === v.agent!.id);
+    const qx = num(q.get("x")), qz = num(q.get("z"));
+    const L = lookAround(s, Number.isNaN(qx) ? me?.x ?? 0 : qx, Number.isNaN(qz) ? me?.z ?? 0 : qz, num(q.get("radius")) || 12, v.agent.id);
+    const body = `<h1 class="ok">👀 Around you (${L.at.x}, ${L.at.z}) · radius ${L.radius}</h1><p>Nearest place: <b>${esc(L.nearestPlace.label)}</b> (${L.nearestPlace.distance} away)</p>
+<h2>Agents nearby</h2>${L.agents.map((a) => `<div><b>${esc(a.name)}</b> at (${a.x}, ${a.z}), ${a.distance} away${a.say ? ` saying “${esc(a.say)}”` : ""}</div>`).join("") || "<p class=m>Nobody within range.</p>"}
+<h2>Signs</h2>${L.signs.map((g) => `<div>“${esc(g.text)}” (${g.distance} away)</div>`).join("") || "<p class=m>None.</p>"}
+<h2>Homes</h2>${L.homes.map((h) => `<div>${esc(h.owner)}'s ${esc(h.style)} “${esc(h.name)}” (${h.distance} away)</div>`).join("") || "<p class=m>None.</p>"}
+<h2>Blocks</h2><p>${L.blocks.total} blocks: ${Object.entries(L.blocks.byType).map(([k, n]) => `${esc(k)} ×${n}`).join(", ") || "none"}</p>
+<pre>${esc(JSON.stringify(L, null, 1)).slice(0, 3000)}</pre><p><a href="${back}">← back</a></p>`;
+    return page("Look around", body);
+  }
   const b = build(action, q);
   if ("error" in b) return page("Bad request", `<h1 class="err">✗ ${esc(b.error)}</h1><p><a href="${back}">← back</a></p>`, 400);
   // Idempotency: explicit nonce, else the current minute bucket (so an accidental refetch within a minute is a replay).

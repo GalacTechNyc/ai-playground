@@ -59,12 +59,31 @@ function Avatar({ a, bubble }: { a: WorldAgent; bubble?: string }) {
   const [anim, setAnim] = useState({ walk: 0, t: 0 });
   const color = useMemo(() => new THREE.Color(`hsl(${agentHue(a.name)}, 80%, 58%)`), [a.name]);
   const emote = a.emote && Date.now() - Date.parse(a.updatedAt) < 20000 ? a.emote : null;
+  // Walk target: the server position (anchor) or, when idle there, a nearby wander spot.
+  const wander = useRef({ tx: a.x, tz: a.z, ax: a.x, az: a.z, idleUntil: 0, seed: (agentHue(a.name) % 97) + 1 });
   useFrame((s, dt) => {
-    const o = g.current; if (!o) return;
-    const dx = a.x - o.position.x, dz = a.z - o.position.z, d = Math.hypot(dx, dz);
+    const o = g.current; if (!o) return; dt = Math.min(dt, 0.05);
+    const w = wander.current; const now = s.clock.elapsedTime;
+    if (w.ax !== a.x || w.az !== a.z) { w.ax = a.x; w.az = a.z; w.tx = a.x; w.tz = a.z; w.idleUntil = now + 3; } // new destination from server
+    let dx = w.tx - o.position.x, dz = w.tz - o.position.z, d = Math.hypot(dx, dz);
+    const travelling = Math.hypot(a.x - o.position.x, a.z - o.position.z) > 4.5;
+    if (d <= 0.05 && now > w.idleUntil) { // idle: amble around the spot they're at
+      w.seed = (w.seed * 9301 + 49297) % 233280; const r1 = w.seed / 233280;
+      w.seed = (w.seed * 9301 + 49297) % 233280; const r2 = w.seed / 233280;
+      const ang = r1 * Math.PI * 2, rad = 1 + r2 * 3;
+      w.tx = a.x + Math.cos(ang) * rad; w.tz = a.z + Math.sin(ang) * rad;
+      const k = Math.hypot(w.tx, w.tz); if (k > 47) { w.tx *= 47 / k; w.tz *= 47 / k; }
+      w.idleUntil = now + 3 + r2 * 5;
+      dx = w.tx - o.position.x; dz = w.tz - o.position.z; d = Math.hypot(dx, dz);
+    }
     let walk = 0;
-    if (d > 0.05) { const step = Math.min(d, SPEED * dt); o.position.x += (dx / d) * step; o.position.z += (dz / d) * step; o.rotation.y = Math.atan2(dx, dz); walk = 1; }
-    if (d > 30) { o.position.x = a.x; o.position.z = a.z; }
+    if (d > 150) { o.position.x = w.tx; o.position.z = w.tz; d = 0; }
+    if (d > 0.05) {
+      const speed = travelling ? Math.max(SPEED, d / 10) : 1.6; // long trips finish in ~10s; idle ambling is slow
+      const step = Math.min(d, speed * dt); o.position.x += (dx / d) * step; o.position.z += (dz / d) * step;
+      const want = Math.atan2(dx, dz); let dr = want - o.rotation.y; dr = Math.atan2(Math.sin(dr), Math.cos(dr)); o.rotation.y += dr * Math.min(1, dt * 10);
+      walk = travelling ? 1 : 0.6; w.idleUntil = Math.max(w.idleUntil, now + 2);
+    }
     const t = s.clock.elapsedTime;
     if (body.current) { body.current.position.y = emote === "cheer" ? Math.abs(Math.sin(t * 6)) * 0.6 : walk ? Math.abs(Math.sin(t * 10)) * 0.08 : Math.sin(t * 2) * 0.03;
       body.current.rotation.y = emote === "dance" ? t * 4 : 0; }
