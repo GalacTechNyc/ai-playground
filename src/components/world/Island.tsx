@@ -8,6 +8,7 @@ import { PLACES } from "@/lib/places";
 export const ISLAND_R = 50;
 import { INTERACTABLES } from "./interactables";
 import { FLOWER_COLORS, scatter, type Scatter } from "./meadow";
+import TreeLOD from "./TreeLOD";
 const rand = (i: number) => { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
 const nearPath = (x: number, z: number) => PLACES.some((p) => {
   const L = Math.hypot(p.x, p.z); if (L < 1) return false; const t = Math.max(0, Math.min(1, (x * p.x + z * p.z) / (L * L)));
@@ -26,7 +27,6 @@ export const TREES: [number, number, number][] = (() => {
 const FLOWERS = scatter(180, 1, TREES, 0.9, FLOWER_COLORS.length);
 const BUSHES = scatter(36, 2, TREES, 2.4);
 const ROCKS = scatter(24, 3, TREES, 2.6);
-const trunkY = (s: number) => s, crownY = (s: number) => 3.3 * s;
 
 /** One instanced mesh per scatter layer; optional per-instance colors. */
 function ScatterLayer({ items, geo, y, scale = 1, color, palette, flat = true }: { items: Scatter[]; geo: THREE.BufferGeometry; y: number; scale?: number; color?: string; palette?: readonly string[]; flat?: boolean }) {
@@ -56,16 +56,6 @@ function Meadow() {
   </group>;
 }
 
-function Instanced({ items, geo, color, emissive, y }: { items: [number, number, number][]; geo: THREE.BufferGeometry; color: string; emissive?: string; y: (s: number) => number }) {
-  const ref = useRef<THREE.InstancedMesh>(null);
-  useEffect(() => {
-    const m = ref.current; if (!m) return; const o = new THREE.Object3D();
-    items.forEach(([x, z, s], i) => { o.position.set(x, y(s), z); o.scale.setScalar(s); o.rotation.y = rand(i) * 3; o.updateMatrix(); m.setMatrixAt(i, o.matrix); });
-    m.instanceMatrix.needsUpdate = true; m.computeBoundingSphere();
-  }, [items, y]);
-  return <instancedMesh ref={ref} args={[geo, undefined, items.length]} castShadow receiveShadow>
-    <meshStandardMaterial color={color} emissive={emissive ?? "#000"} emissiveIntensity={emissive ? 0.4 : 0} flatShading /></instancedMesh>;
-}
 
 function Water() {
   const ref = useRef<THREE.Mesh>(null);
@@ -83,9 +73,7 @@ function JumpPad({ x, z }: { x: number; z: number }) {
   </group>;
 }
 
-export default function Island({ onGround }: { onGround: (e: ThreeEvent<PointerEvent>) => void }) {
-  const trunk = useMemo(() => new THREE.CylinderGeometry(0.25, 0.35, 2, 6), []);
-  const crown = useMemo(() => new THREE.ConeGeometry(1.4, 3, 7), []);
+export default function Island({ onGround, quality = "high" }: { onGround: (e: ThreeEvent<PointerEvent>) => void; quality?: "high" | "low" }) {
   const paths = PLACES.filter((p) => Math.hypot(p.x, p.z) > 10);
   return (
     <group>
@@ -115,8 +103,7 @@ export default function Island({ onGround }: { onGround: (e: ThreeEvent<PointerE
         <gridHelper args={[14, 14, "#a78bfa", "#c4b5fd"]} position={[0, 0.12, 0]} />
       </group>
       {/* trees (instanced) */}
-      <Instanced items={TREES} geo={trunk} color="#8b5a2b" y={trunkY} />
-      <Instanced items={TREES} geo={crown} color="#22a34a" y={crownY} />
+      <TreeLOD trees={TREES} quality={quality} />
       {/* wildflowers, bushes and rocks on open grass (instanced) */}
       <Meadow />
       {INTERACTABLES.filter((i) => i.kind === "jumpPad").map((i) => <JumpPad key={i.id} x={i.x} z={i.z} />)}
