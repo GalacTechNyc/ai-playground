@@ -16,6 +16,7 @@ import FixItBoard from "./FixItBoard";
 import ArcadeHall from "./ArcadeHall";
 import CipherRingTerminal from "./CipherRingTerminal";
 import Lake from "./Lake";
+import LakeBoard from "./LakeBoard";
 import { boat, clampToLake, inLake, onDock, DOCK } from "./lake";
 import Accessory from "./Accessories";
 import { hearing, heardText, type Hearing } from "./proximity";
@@ -294,6 +295,7 @@ export default function Scene({ state, onIntent, onNavigate, building, bloom, bu
       <ArcadeHall onNavigate={onNavigate} />
       <CipherRingTerminal onNavigate={onNavigate} />
       <Lake enabled={!building} />
+      <LakeBoard onNavigate={onNavigate} />
       {[...byType].map(([t, bs]) => <BlockLayer key={t} type={t} blocks={bs} onPick={pickBlock} />)}
       <LampGlow blocks={byType.get("lamp") ?? []} playerPosition={player.pos} />
       {stackedSigns(state?.signs ?? []).map(({ s, k }) => (
