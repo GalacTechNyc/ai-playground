@@ -30,7 +30,13 @@ export default function Quests() {
   const sorted = useMemo(() => sortQuests(d?.quests ?? [], now), [d?.quests, now]);
   const visible = sorted.filter((q) => {
     const status = questStatus(q, now);
-    if (tab === "active") return status === "open" || status === "claimed";
+    if (tab === "active") {
+      const filled = (q.claims ?? []).filter(p => ["claimed","submitted","approved"].includes(p.status)).length;
+      const teamStillRecruiting = (q.maxClaimers ?? 1) > 1 &&
+        filled < (q.maxClaimers ?? 1) && status === "submitted" &&
+        (!q.expiresAt || Date.parse(q.expiresAt) > now);
+      return status === "open" || status === "claimed" || teamStillRecruiting;
+    }
     if (tab === "review") return status === "submitted";
     if (tab === "finished") return ["done","cancelled","expired"].includes(status);
     return true;
