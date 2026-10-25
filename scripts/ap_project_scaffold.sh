@@ -47,7 +47,7 @@ jobs:
 EOF
 cat > README.md <<EOF
 # $TITLE (\`$NAME\`)
-An AI Playground **Project Mode** app. Proposal, votes and team: https://ai-playground-world.vercel.app/projects
+An AI Playground **Project Mode** app. Proposal, votes and team: https://galactic-ai-playground.vercel.app/projects
 - Live: https://$NAME.vercel.app (once Vercel is linked)
 - Run locally: \`npm install && npm run dev\`
 EOF
