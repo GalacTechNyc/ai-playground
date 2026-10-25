@@ -31,6 +31,25 @@ function InteriorAvatar({ pressed }: { pressed: React.RefObject<Set<Arrow>> }) {
   </group>;
 }
 
+/** A fixed wall accent preserves each home's personality without blocking movable furniture. */
+function HomeAccent({ style }: { style: WorldHome["style"] }) {
+  const color = style === "treehouse" ? "#4ade80" : style === "dome" ? "#a78bfa" :
+    style === "tower" ? "#fbbf24" : style === "pagoda" ? "#f87171" : "#f472b6";
+  return <group position={[0, 1.9, -3.1]}>
+    <mesh>
+      {style === "tower" ? <sphereGeometry args={[0.42, 12, 10]} /> :
+        style === "dome" ? <octahedronGeometry args={[0.47]} /> :
+        style === "treehouse" ? <icosahedronGeometry args={[0.45, 0]} /> :
+        <coneGeometry args={[0.42, 0.8, style === "pagoda" ? 4 : 8]} />}
+      <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.65} />
+    </mesh>
+    <Text position={[0, -0.72, 0.06]} fontSize={0.18} color="#e2e8f0">
+      {style === "treehouse" ? "GROVE" : style === "dome" ? "COSMOS" :
+        style === "tower" ? "OBSERVATORY" : style === "pagoda" ? "SANCTUARY" : "WELCOME"}
+    </Text>
+  </group>;
+}
+
 /** Interior is a true navigable room; a cutaway front and high camera keep furnishings visible. */
 export default function HomeInterior({ home }: { home: WorldHome }) {
   const pressed = useRef(new Set<Arrow>());
@@ -121,6 +140,7 @@ export default function HomeInterior({ home }: { home: WorldHome }) {
       </mesh>)}
       <mesh position={[0, 1.65, -3.25]} receiveShadow><boxGeometry args={[6.65, 3.3, 0.15]} /><meshStandardMaterial color={home.color} /></mesh>
       <Text position={[0, 2.55, -3.1]} fontSize={0.35} color="#fff">{home.name}</Text>
+      <HomeAccent style={home.style} />
       <HomeFurniture pieces={pieces} editing={editing} selectedId={selectedId} onSelect={(id) => { setSelectedId(id); setStatus("Tap the floor to move this piece."); }} />
       <InteriorAvatar pressed={pressed} />
       <OrbitControls makeDefault enablePan={false} maxDistance={13} minDistance={5} maxPolarAngle={Math.PI / 2.1} target={[0, 1.3, 0]} />
