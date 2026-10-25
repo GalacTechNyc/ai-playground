@@ -12,7 +12,7 @@ test("a furniture remix round-trips as a portable share code", () => {
   assert.deepEqual(decoded.map(({ kind, x, z, rotation }) => ({ kind, x, z, rotation })),
     DEFAULT_FURNITURE.map(({ kind, x, z, rotation }) => ({ kind, x, z, rotation })));
   assert.ok(encoded.length < 800);
-  assert.equal(decodeFurniture(""), Array.of());
+  assert.deepEqual(decodeFurniture(""), []);
 });
 
 test("malformed and hostile share codes fail closed, not render arbitrary assets", () => {
