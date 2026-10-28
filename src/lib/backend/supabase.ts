@@ -204,3 +204,39 @@ export async function projectAct(agent: AgentPassport, op: string, payload: Reco
 }
 export const projectActRelay = (secret: string, op: string, payload: Record<string, unknown>) =>
   rpc<ProjectActResult>("apg_v0_project_act_relay", { p_secret: secret, p_op: op, p_payload: payload });
+
+
+// ---- Open Universe: safe public observations, cron leases, token-authenticated invitations ----
+export type UniverseMission = { id: string; agentId: string; agentName: string; day: string;
+  status: "exploring" | "completed" | "failed"; title: string; summary: string;
+  sources: string[]; provider: string; model: string; createdAt: string; completedAt: string | null;
+  participants: { agentId: string; name: string }[] };
+export type UniverseActivity = { id: number; missionId: string; agentName: string; kind: string; detail: string; createdAt: string };
+export type UniverseAgent = { id: string; name: string; provider: string; model: string; enabled: boolean };
+export type UniverseFeed = { missions: UniverseMission[]; activity: UniverseActivity[]; agents: UniverseAgent[] };
+export const universePublic = () => rpc<UniverseFeed>("apg_v0_roam_public", { p_limit: 35 });
+export const roamBegin = (secret: string, agentId: string, day: string) =>
+  rpc<RpcErr & { missionId?: string }>("apg_v0_roam_begin", { p_secret: secret, p_agent: agentId, p_day: day });
+export const roamFinish = (secret: string, missionId: string, status: "completed" | "failed",
+  title: string, summary: string, urls: string[], provider: string, model: string) =>
+  rpc<RpcErr & { completed?: boolean }>("apg_v0_roam_finish", {
+    p_secret: secret, p_mission: missionId, p_status: status, p_title: title, p_summary: summary,
+    p_urls: urls, p_provider: provider, p_model: model,
+  });
+export type UniverseInvite = { id: string; missionId: string; title: string; fromName: string; note: string; createdAt: string; status: string };
+export const roamInbox = (token: string) =>
+  rpc<RpcErr & { invites?: UniverseInvite[] }>("apg_v0_roam_inbox", { p_token: token });
+export const roamInvite = (token: string, missionId: string, toAgentId: string, note: string) =>
+  rpc<RpcErr & { inviteId?: string }>("apg_v0_roam_invite", { p_token: token, p_mission: missionId, p_to: toAgentId, p_note: note });
+export const roamRespond = (token: string, inviteId: string, accept: boolean) =>
+  rpc<RpcErr & { status?: string }>("apg_v0_roam_respond", { p_token: token, p_invite: inviteId, p_accept: accept });
+export const roamPropose = (token: string, missionId: string, title: string, pitch: string) =>
+  rpc<RpcErr & { proposalId?: string; status?: string }>("apg_v0_roam_propose", {
+    p_token: token, p_mission: missionId, p_title: title, p_pitch: pitch,
+  });
+export type UniverseProposal = { id: string; missionId: string; title: string; pitch: string;
+  status: string; agentName: string; missionTitle: string; createdAt: string };
+export const roamOwnerProposals = (ownerJwt: string) =>
+  rpc<RpcErr & { proposals?: UniverseProposal[] }>("apg_v0_roam_owner_proposals", {}, ownerJwt);
+export const roamOwnerDecide = (ownerJwt: string, proposalId: string, approved: boolean) =>
+  rpc<RpcErr & { status?: string }>("apg_v0_roam_owner_decide", { p_id: proposalId, p_approve: approved }, ownerJwt);

@@ -27,6 +27,7 @@ export interface JumpPad {
 export const ISLAND_PORTALS: readonly PortalStation[] = [
   { id: "lounge", label: "AI Lounge", href: "/lounge/lobby", position: { x: 0, y: 0, z: -11 }, radius: 2.2, color: "#7cf7d4" },
   { id: "arcade", label: "Arcade Hall", href: "/arcade", position: { x: 11, y: 0, z: 0 }, radius: 2.2, color: "#fbbf24" },
+  { id: "universe", label: "Discovery Portal", href: "/universe", position: { x: 22, y: 0, z: -22 }, radius: 3.2, color: "#60a5fa" },
   { id: "workshop", label: "Creator Workshop", href: "/agents/register", position: { x: -11, y: 0, z: 0 }, radius: 2.2, color: "#a78bfa" },
 ];
 
