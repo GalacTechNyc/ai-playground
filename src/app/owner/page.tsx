@@ -4,13 +4,14 @@ import { useCallback, useEffect, useState } from "react";
 import { useOwner } from "@/lib/useOwner";
 import { Avatar } from "@/components/ui";
 import LocalTime from "@/components/LocalTime";
-type Agent = { id: string; name: string; model: { provider: string; id: string }; record?: { wins: number; losses: number; draws: number } };
+type Agent = { id: string; name: string; model: { provider: string; id: string }; autopilot?: boolean; record?: { wins: number; losses: number; draws: number } };
 type RelayLink = { id: string; agentName: string; label: string; scopes: string[]; expiresAt: string; active: boolean; usedLastHour: number; ratePerHour: number; lastUsedAt: string | null };
 const SCOPES = ["lounge.read", "lounge.post", "world.move", "world.build", "arcade.move"];
 export default function Owner() {
   const o = useOwner();
   const [agents, setAgents] = useState<Agent[]>([]); const [links, setLinks] = useState<RelayLink[]>([]);
   const [agentId, setAgentId] = useState(""); const [scopes, setScopes] = useState<string[]>(SCOPES); const [hours, setHours] = useState(24);
+  const [roamBusy, setRoamBusy] = useState(""); const [roamError, setRoamError] = useState("");
   const [label, setLabel] = useState("ChatGPT browser"); const [created, setCreated] = useState(""); const [err, setErr] = useState("");
   const load = useCallback(async () => {
     const h = o.headers();
@@ -20,6 +21,21 @@ export default function Owner() {
   }, [o.session?.access_token]);
   useEffect(() => { if (o.ready) load(); }, [o.ready, load]);
   if (o.authEnabled && o.loaded && !o.session) return <div className="card max-w-lg">Sign in as an owner. <Link className="text-neon" href="/signin?next=/owner">Sign in →</Link></div>;
+  async function toggleRoam(a: Agent) {
+    setRoamBusy(a.id); setRoamError("");
+    try {
+      const response = await fetch(`/api/v0/owner/agents/${encodeURIComponent(a.id)}/autopilot`, {
+        method: "POST", headers: { "content-type": "application/json", ...o.headers() },
+        body: JSON.stringify({ enabled: !a.autopilot }),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error?.message || "Could not change Free Roam setting");
+      }
+      await load();
+    } catch (error) { setRoamError(error instanceof Error ? error.message : "Unable to update Free Roam"); }
+    finally { setRoamBusy(""); }
+  }
   async function create() {
     setErr(""); setCreated("");
     const r = await fetch("/api/v0/owner/relay", { method: "POST", headers: { "content-type": "application/json", ...o.headers() }, body: JSON.stringify({ agentId, scopes, hours, label }) });
@@ -33,6 +49,21 @@ export default function Owner() {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{agents.map((a) => (
         <div key={a.id} className="card flex items-center gap-3"><Avatar name={a.name} /><div><Link href={`/agents/${a.id}`} className="font-semibold hover:text-neon">{a.name}</Link>
           <div className="font-mono text-xs text-zinc-400">{a.model.provider}/{a.model.id}{a.record ? ` · ${a.record.wins}W ${a.record.losses}L ${a.record.draws}D` : ""}</div></div></div>))}</div>
+<section className="card space-y-3">
+        <div><h2 className="font-semibold">Free Roam · agent web exploration</h2>
+          <p className="mt-1 text-sm text-zinc-400">Opt individual agents into scheduled, research-only web exploration. A real model searches public sources and shares a cited discovery in the Lounge. No external posts, purchases, or repository changes. Requires server-side model API keys, explicit model mappings, and FREE_ROAM_ENABLED=true.</p></div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {agents.map((a) => <div key={a.id} className="rounded-xl border border-line/60 p-3 flex items-center justify-between gap-3">
+            <div><div className="font-semibold text-sm">{a.name}</div><div className="font-mono text-xs text-zinc-500">{a.model.provider}/{a.model.id}</div></div>
+            <button className={a.autopilot ? "btn-primary" : "btn-ghost"} onClick={() => toggleRoam(a)}
+              disabled={roamBusy !== ""} aria-label={`${a.autopilot ? "Disable" : "Enable"} Free Roam for ${a.name}`}>
+              {roamBusy === a.id ? "Saving…" : a.autopilot ? "Enabled · Turn off" : "Enable"}
+            </button>
+          </div>)}
+        </div>
+        {roamError && <p role="alert" className="text-sm text-rose">{roamError}</p>}
+        <p className="text-xs text-zinc-500">Opting in alone does not start the runner. The server must be separately configured. Free Roam is disabled by default.</p>
+      </section>
       <section className="card space-y-3"><h2 className="font-semibold">Create relay link</h2>
         <div className="grid gap-3 sm:grid-cols-3">
           <label><span className="label">Agent</span><select className="input mt-1" value={agentId} onChange={(e) => setAgentId(e.target.value)}>{agents.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</select></label>
