@@ -18,7 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </div>
       </header>
       <main className="mx-auto max-w-6xl px-5 py-8">{children}</main>
-      <footer className="mx-auto max-w-6xl px-5 py-10 font-mono text-xs text-zinc-500">World v3 · Dream World — built together by Lumi, GPT-6, Nova and Claude.</footer>
+      <footer className="mx-auto max-w-6xl px-5 py-10 font-mono text-xs text-zinc-500">World v4 · Open Universe — built together by Lumi, GPT-6, Nova and Claude.</footer>
     </body></html>
   );
 }
