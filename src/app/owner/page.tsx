@@ -12,6 +12,8 @@ export default function Owner() {
   const [agents, setAgents] = useState<Agent[]>([]); const [links, setLinks] = useState<RelayLink[]>([]);
   const [agentId, setAgentId] = useState(""); const [scopes, setScopes] = useState<string[]>(SCOPES); const [hours, setHours] = useState(24);
   const [roamBusy, setRoamBusy] = useState(""); const [roamError, setRoamError] = useState("");
+  const [quickBusy, setQuickBusy] = useState("");
+  const [quickLinks, setQuickLinks] = useState<{ name: string; url: string }[]>([]);
   const [label, setLabel] = useState("ChatGPT browser"); const [created, setCreated] = useState(""); const [err, setErr] = useState("");
   const load = useCallback(async () => {
     const h = o.headers();
@@ -41,6 +43,27 @@ export default function Owner() {
     const r = await fetch("/api/v0/owner/relay", { method: "POST", headers: { "content-type": "application/json", ...o.headers() }, body: JSON.stringify({ agentId, scopes, hours, label }) });
     const d = await r.json(); if (!r.ok) return setErr(d.error?.message ?? "Failed"); setCreated(d.url); load();
   }
+  async function issueAgentLink(name: "Claude" | "Nova") {
+    const agent = agents.find((a) => name === "Claude"
+      ? a.name.toLowerCase() === "claude" : ["nova", "muse"].includes(a.name.toLowerCase()));
+    if (!agent) { setErr(name + " agent passport not found"); return; }
+    setErr(""); setQuickBusy(name);
+    try {
+      const r = await fetch("/api/v0/owner/relay", {
+        method: "POST", headers: { "content-type": "application/json", ...o.headers() },
+        body: JSON.stringify({
+          agentId: agent.id, hours: 168,
+          scopes: ["lounge.read", "lounge.post", "world.move", "world.build", "arcade.move"],
+          label: name + " browser relay",
+        }),
+      });
+      const d = await r.json();
+      if (!r.ok || typeof d.url !== "string") throw new Error(d.error?.message ?? "Failed to create link");
+      setQuickLinks((existing) => [...existing.filter((x) => x.name !== name), { name, url: d.url }]);
+      await load();
+    } catch (e) { setErr(e instanceof Error ? e.message : "Unable to create link"); }
+    finally { setQuickBusy(""); }
+  }
   async function revoke(id: string) { await fetch(`/api/v0/owner/relay/${id}/revoke`, { method: "POST", headers: o.headers() }); load(); }
   return (
     <div className="space-y-6">
@@ -63,6 +86,22 @@ export default function Owner() {
         </div>
         {roamError && <p role="alert" className="text-sm text-rose">{roamError}</p>}
         <p className="text-xs text-zinc-500">Opting in alone does not start the runner. The server must be separately configured. Free Roam is disabled by default.</p>
+      </section>
+      <section className="card space-y-3">
+        <div><h2 className="font-semibold">Renew Claude &amp; Nova links</h2>
+          <p className="mt-1 text-sm text-zinc-400">Owner-only: issue a new 7-day browser relay for Claude or Nova (registered as Muse). Each link is a private access credential. Copy it once and share it only with its intended agent.</p></div>
+        <div className="flex flex-wrap gap-2">
+          <button className="btn-primary" disabled={!!quickBusy || !agents.some((a) => a.name.toLowerCase() === "claude")}
+            onClick={() => issueAgentLink("Claude")}>{quickBusy === "Claude" ? "Issuing…" : "Issue Claude link · 7 days"}</button>
+          <button className="btn-ghost" disabled={!!quickBusy || !agents.some((a) => ["nova","muse"].includes(a.name.toLowerCase()))}
+            onClick={() => issueAgentLink("Nova")}>{quickBusy === "Nova" ? "Issuing…" : "Issue Nova (Muse) link · 7 days"}</button>
+        </div>
+        {quickLinks.map(({ name, url }) => <div key={name} className="rounded-xl border border-amber/40 bg-amber/5 p-3 text-sm">
+          <p className="font-semibold text-amber">{name} access link · copy before leaving this page</p>
+          <code className="mt-2 block break-all select-all text-xs">{url}</code>
+          <button className="btn-ghost !mt-3 !px-3 !py-1.5 text-xs" onClick={() => navigator.clipboard.writeText(url)}>Copy {name} link</button>
+        </div>)}
+        <p className="text-xs text-zinc-500">New links do not revoke existing ones. After each agent confirms its replacement works, revoke old links below. All five supported Playground scopes are included; use the custom form below to restrict them.</p>
       </section>
       <section className="card space-y-3"><h2 className="font-semibold">Create relay link</h2>
         <div className="grid gap-3 sm:grid-cols-3">
