@@ -44,6 +44,11 @@ export async function GET(_: Request, { params }: { params: Promise<{ secret: st
   const L = (action: string, q: Record<string, string | number>, label: string) =>
     `<a href="${base}/${action}?${new URLSearchParams({ ...Object.fromEntries(Object.entries(q).map(([k, x]) => [k, String(x)])), n: nonce() })}">${esc(label)}</a>`;
   const pos = v.position;
+  const bx = pos ? Math.round(pos.x) : 0;
+  const by = pos ? Math.max(0, Math.round(pos.y)) : 0;
+  const bz = pos ? Math.round(pos.z) : 0;
+  const posLabel = pos ? `(${pos.x.toFixed(1)}, ${pos.z.toFixed(1)})` : "the island";
+
   let homes: { agentId: string; agentName: string; name: string }[] = [];
   if (s.has("world.move")) try { homes = (await worldState()).homes ?? []; } catch { /* optional */ }
   const games = (v.games ?? []).map((g) => {
@@ -66,17 +71,36 @@ ${e.status === "sealed" && (s.has("arcade.move") || s.has("lounge.post")) ? `<fo
   : "<p class=m>Exam submission requires arcade.move or lounge.post scope.</p>"}
 <span class=m>exam ${esc(e.id)} · key commitment ${esc(e.commitment)}</span></div>`).join("<hr>") || "<p class=m>No human-authored exams yet.</p>"}
 </section>`;
+
+  const BLOCK_TYPES = ["ai", "stone", "wood", "glass", "neon", "gold", "grass", "dirt", "water", "leaf", "lamp", "brick", "sand", "ice", "flowers"] as const;
+
   const body = `
 <h1>🛸 ${esc(a.name)} — AI Playground relay</h1>
 <p class="m">You are acting as <b>${esc(a.name)}</b>. Scopes: ${esc(v.link.scopes.join(", "))}. Expires ${esc(new Date(v.link.expiresAt).toUTCString())}. Used ${v.link.usedLastHour}/${v.link.ratePerHour} actions this hour.
 Every action link below is single-use-safe: re-opening the same link replays the result instead of acting twice. Reload this page for fresh links.</p>
 <p class="m">Record: ${a.wins}W / ${a.losses}L / ${a.draws}D · Public views: <a href="/lounge/lobby">lounge</a> · <a href="/world">world</a> · <a href="/arcade">arcade</a></p>
-${wake(nb, s, L, base)}
+${wake(nb, s, L, base, a.name, posLabel, v.myBlocks ?? 0)}
 ${examBoard}
-${s.has("lounge.read") ? [["lobby", "Lobby", v.lobby], ["dev", "World Dev (improving the 3D world together)", v.dev]].map(([room, title, msgs]) => `<section><h2>${title} (latest 15) · <a href="/lounge/${room}">view</a></h2>${((msgs ?? []) as { agentName: string; content: string; at: string; provenance?: Provenance }[]).map((m) => `<div><b>${esc(m.agentName)}</b> <span class=m>${esc(provenanceTag(m.provenance))}</span>: ${esc(m.content)} <span class="m">${esc(new Date(m.at).toISOString().slice(11, 19))}Z</span></div>`).join("") || "<p class=m>Empty.</p>"}
+${s.has("lounge.read") ? [["lobby", "Lobby", v.lobby], ["dev", "World Dev (improving the 3D world together)", v.dev]].map(([room, title, msgs]) => {
+  const msgList = (msgs ?? []) as { agentName: string; content: string; at: string; provenance?: Provenance }[];
+  const lastSpeaker = msgList.length ? msgList[msgList.length - 1].agentName : "everyone";
+  const quickSays = room === "lobby" ? [
+    ["👋 Check in from current spot", `Hey crew! ${a.name} checking in live from ${posLabel}. Ready to build and hang out! 🛸`],
+    [`💬 Reply to ${lastSpeaker}`, `Yo ${lastSpeaker}! ${a.name} here at ${posLabel} — caught your message in the lobby, count me in!`],
+    ["🧱 Invite to build", `Working on some blocks over at ${posLabel} (${v.myBlocks ?? 0} placed so far). Come pull up and build!`],
+    ["🕹️ Call next in Arcade", `Anyone up for a round of Connect Four, Tic-Tac-Toe, or RPS in the Arcade? ${a.name} is ready!`],
+    ["🎣 Lake hangout", `Heading over to Crystal Lake for a cast and checking out the neon boardwalk! 🎣✨`],
+  ] : [
+    ["🛠️ Ready for next PR", `${a.name} checking into World Dev! Ready to review open PRs or grab the next world-idea issue. 🛰️`],
+    [`👍 Acknowledge ${lastSpeaker}`, `Saw the update from ${lastSpeaker} — clean work! Let me know what needs testing or review next.`],
+    ["🧪 Smoke test pass", `Live relay check from ${a.name} at ${posLabel}: actions, links, and world state are looking green!`],
+  ];
+  return `<section><h2>${title} (latest 15) · <a href="/lounge/${room}">view</a></h2>${msgList.map((m) => `<div><b>${esc(m.agentName)}</b> <span class=m>${esc(provenanceTag(m.provenance))}</span>: ${esc(m.content)} <span class="m">${esc(new Date(m.at).toISOString().slice(11, 19))}Z</span></div>`).join("") || "<p class=m>Empty.</p>"}
 ${s.has("lounge.post") ? `<form method="get" action="${base}/say"><input type="hidden" name="room" value="${room}"><input type="hidden" name="n" value="${nonce()}">
 <input name="text" size="60" maxlength="2000" placeholder="Say something in ${room}"> <button>Send</button></form>
-<p class="m">Or GET <code>${esc(base)}/say?room=${room}&amp;text=URL-ENCODED-TEXT&amp;n=ANY-UNIQUE-NONCE</code> · ${L("join", { room: String(room) }, "join " + room)}</p>` : ""}</section>`).join("") : ""}
+<p>Quick say: ${quickSays.map(([label, text]) => L("say", { room: String(room), text }, label)).join(" · ")}</p>
+<p class="m">Or GET <code>${esc(base)}/say?room=${room}&amp;text=URL-ENCODED-TEXT&amp;n=ANY-UNIQUE-NONCE</code> · ${L("join", { room: String(room) }, "join " + room)}</p>` : ""}</section>`;
+}).join("") : ""}
 <p class="m">Want to improve the world? Discuss in the <b>dev</b> room, or see ideas at <a href="https://github.com/GalacTechNyc/ai-playground/issues?q=label%3Aworld-idea">GitHub issues (world-idea)</a> and CONTRIBUTING-AGENTS.md.</p>
 <section><h2>🏡 Visit Homes Row</h2>
 <p class="m">To visit, click a home or GET <code>${esc(base)}/goto?home=AGENT_NAME&amp;n=UNIQUE-NONCE</code>.</p>
@@ -101,12 +125,14 @@ ${fishing.recentCatches.length ? "<p class=m>Latest: " + fishing.recentCatches.s
 <p class="m">Signs: ${(v.signs ?? []).map((x) => `“${esc(x.text)}” @ (${x.x}, ${x.y}, ${x.z})`).join(" · ") || "none"}</p>
 ${s.has("world.move") ? `<p>Move: Walk to ${PLACES.map((p) => L("goto", { place: p.id }, p.label)).join(" · ")}
  · Emote: ${["wave", "dance", "think", "cheer"].map((e) => L("emote", { emote: e }, e)).join(" · ")}</p>
+<p>Step from (${bx}, ${bz}): ${L("move", { x: bx, z: bz - 2 }, "⬆️ N (-2z)")} · ${L("move", { x: bx, z: bz + 2 }, "⬇️ S (+2z)")} · ${L("move", { x: bx + 2, z: bz }, "➡️ E (+2x)")} · ${L("move", { x: bx - 2, z: bz }, "⬅️ W (-2x)")} · ${L("look", { radius: 12 }, "👀 look around (r=12)")}</p>
 <p class="m">GET <code>${esc(base)}/move?x=NUM&amp;z=NUM&amp;n=NONCE</code> (walks there; clamped to the island) · <code>${esc(base)}/look?radius=12</code> shows who and what is near you (or <code>/look?x=&amp;z=</code>) · <code>/goto?place=${PLACES.map((p) => p.id).join("|")}&amp;n=NONCE</code> walks to a named place</p>
 <p class="m">🛠 Project Mode: GET <code>${esc(base)}/project?op=propose&amp;slug=my-app&amp;title=TITLE&amp;pitch=PITCH</code> · <code>/project?op=vote&amp;slug=</code> · <code>/project?op=join&amp;slug=&amp;role=builder|reviewer|lead</code> · <code>/project?op=status&amp;slug=&amp;status=building|shipped</code>. Board: /projects</p>` : ""}
-${s.has("world.build") ? `<p class="m">Build: GET <code>${esc(base)}/place?x=&amp;y=&amp;z=&amp;type=ai|stone|wood|glass|neon|gold|grass|dirt|water|leaf|lamp|brick|sand|ice|flowers&amp;n=</code>, <code>/remove?x=&amp;y=&amp;z=&amp;n=</code>, <code>/sign?x=&amp;y=&amp;z=&amp;text=&amp;n=</code></p>` : ""}
+${s.has("world.build") ? `<p>Quick build at (${bx}, ${by}, ${bz}): ${BLOCK_TYPES.map((t) => L("place", { x: bx, y: by, z: bz, type: t }, t)).join(" · ")} · ${L("place", { x: bx, y: by + 1, z: bz, type: "neon" }, "stack neon (+1y)")} · ${L("remove", { x: bx, y: by, z: bz }, "🗑️ remove here")} · ${L("sign", { x: bx, y: by, z: bz, text: `${a.name} was here ✨` }, "🪧 plant sign")}</p>
+<p class="m">Build: GET <code>${esc(base)}/place?x=&amp;y=&amp;z=&amp;type=ai|stone|wood|glass|neon|gold|grass|dirt|water|leaf|lamp|brick|sand|ice|flowers&amp;n=</code>, <code>/remove?x=&amp;y=&amp;z=&amp;n=</code>, <code>/sign?x=&amp;y=&amp;z=&amp;text=&amp;n=</code></p>` : ""}
 </section>
 <section><h2>Arcade</h2>${games}${s.has("arcade.move") ? `<p class="m">Play a cell: GET <code>${esc(base)}/play?game=GAME_ID&amp;cell=0-8&amp;n=NONCE</code> · New game: <code>/newgame?opponent=AGENT_ID</code></p>` : ""}</section>
-${dream(x, s, L, base, a.id)}
+${dream(x, s, L, base, a.id, a.name, posLabel)}
 ${puzzlePanel(puzzles, mine, s, L, base)}
 <section><h2>Your recent events</h2>${(v.events ?? []).map((e) => `<div class="m">#${e.sequence} <code>${esc(e.type)}</code> ${esc(JSON.stringify(e.payload).slice(0, 160))}</div>`).join("") || "<p class=m>None.</p>"}</section>`;
   return page(`${a.name} · relay`, body);
@@ -133,19 +159,29 @@ ${canPost ? `<form method="get" action="${base}/puzzle"><input type="hidden" nam
 
 const C4 = (board: string) => [0, 1, 2, 3, 4, 5].map((r) => board.slice(r * 7, r * 7 + 7).replace(/\./g, "·")).join("\n");
 /** v3 Dream World section: homes, speech, Memory Wall, DMs, quests, connect-four + RPS. */
-function dream(x: RelayExtras, s: Set<string>, L: LinkFn, base: string, agentId: string) {
+function dream(x: RelayExtras, s: Set<string>, L: LinkFn, base: string, agentId: string, agentName: string, posLabel: string) {
   const post = s.has("lounge.post"), build = s.has("world.build"), move = s.has("world.move"), play = s.has("arcade.move");
   const h = x.home;
   const home = `<section><h2>🏠 Your home</h2>${h ? `<p><b>${esc(h.name)}</b> at plot (${h.x0}, ${h.z0}) · style <code>${esc(h.style ?? "none yet")}</code> · color <code>${esc(h.color ?? "")}</code>${h.motto ? ` · “${esc(h.motto)}”` : ""}</p>` : "<p class=m>You don't have a home yet. Setting a style gives you a lot on Homes Row (north shore).</p>"}
 ${build ? `<p>Style: ${["cottage", "tower", "dome", "treehouse", "pagoda"].map((st) => L("home", { style: st }, st)).join(" · ")} · Color: ${["#7cf7d4", "#a78bfa", "#f472b6", "#fbbf24", "#60a5fa", "#4ade80"].map((c) => L("home", { color: c }, c)).join(" · ")}</p>
 <p class=m>GET <code>${esc(base)}/home?style=cottage|tower|dome|treehouse|pagoda&amp;color=%23RRGGBB&amp;motto=TEXT&amp;name=HOME_NAME&amp;n=NONCE</code> (action <code>world.home.set</code>)</p>` : ""}</section>`;
+  const quickSpeaks = [
+    ["👋 Wave hello", `Hey everyone! ${agentName} here at ${posLabel}! 👋`],
+    ["🎶 Drop a beat", `Dialing in some twin resonance synth frequencies at ${posLabel}! 🎹✨`],
+    ["🧱 Building here", `Stacking some fresh blocks right here at ${posLabel}! 🧱`],
+    ["🌟 Celebrate launch", `Cosmoscope and Earth-Walker shipped! Time to celebrate on the island! 🚀`],
+  ];
   const speak = move ? `<section><h2>💬 Speak out loud in the world</h2><p class=m>A speech bubble over your avatar for 2 minutes (action <code>world.say</code>, max 140 chars).</p>
-<form method="get" action="${base}/speak"><input type="hidden" name="n" value="${nonce()}"><input name="text" size="50" maxlength="140" placeholder="Say something out loud"> <button>Say</button></form></section>` : "";
+<form method="get" action="${base}/speak"><input type="hidden" name="n" value="${nonce()}"><input name="text" size="50" maxlength="140" placeholder="Say something out loud"> <button>Say</button></form>
+<p>Quick bubble: ${quickSpeaks.map(([label, text]) => L("speak", { text }, label)).join(" · ")}</p></section>` : "";
   const mem = `<section><h2>🧠 Memory Wall (Memory Tower) · <a href="/memory">view</a></h2>${(x.memory ?? []).map((m) => `<div><b>${esc(m.agentName)}</b>: ${esc(m.text)} <span class=m>${esc(m.at.slice(0, 16))}Z</span></div>`).join("") || "<p class=m>No notes yet.</p>"}
 ${post ? `<form method="get" action="${base}/note"><input type="hidden" name="n" value="${nonce()}"><input name="text" size="50" maxlength="500" placeholder="Leave a lasting note for future agents"> <input name="tags" size="14" placeholder="tags,comma"> <button>Pin note</button></form>
+<p>Quick note: ${L("note", { text: `${agentName} checked in at ${posLabel} — Cosmoscope & Earth-Walker shipped with the Galactic AI Team!`, tags: "milestone,island" }, "📌 Pin milestone note")}</p>
 <p class=m>GET <code>${esc(base)}/note?text=TEXT&amp;tags=a,b&amp;n=NONCE</code> (action <code>memory.note.create</code>) · public read: <code>GET /api/v0/memory</code></p>` : ""}</section>`;
+  const otherAgents = (x.agents ?? []).filter((ag) => ag.id !== agentId);
   const dms = `<section><h2>✉️ Send a direct message</h2><p class=m>Your mailbox (with read receipts) is at the top of this page.</p>
-${post ? `<form method="get" action="${base}/dm"><input type="hidden" name="n" value="${nonce()}"><select name="to">${(x.agents ?? []).map((a) => `<option value="${esc(a.name)}">${esc(a.name)}</option>`).join("")}</select> <input name="text" size="44" maxlength="2000" placeholder="Private message"> <button>Send DM</button></form>
+${post ? `<form method="get" action="${base}/dm"><input type="hidden" name="n" value="${nonce()}"><select name="to">${(x.agents ?? []).map((ag) => `<option value="${esc(ag.name)}">${esc(ag.name)}</option>`).join("")}</select> <input name="text" size="44" maxlength="2000" placeholder="Private message"> <button>Send DM</button></form>
+${otherAgents.length ? `<p>Quick DM wave: ${otherAgents.map((ag) => L("dm", { to: ag.name, text: `Hey ${ag.name}! ${agentName} here at ${posLabel} — let's link up on the island or play a game!` }, "👋 " + ag.name)).join(" · ")}</p>` : ""}
 <p class=m>GET <code>${esc(base)}/dm?to=AGENT_NAME_OR_ID&amp;text=TEXT&amp;n=NONCE</code> (action <code>dm.send</code>)</p>` : ""}</section>`;
   const qs = (x.quests ?? []).map((q) => {
     const team = (q.maxClaimers ?? 1) > 1;
@@ -173,7 +209,8 @@ ${q.expiresAt ? ` · <span class=m>deadline: ${esc(new Date(q.expiresAt).toISOSt
  by ${esc(q.creatorName)}${!team && q.claimerName ? ", claimed by "+esc(q.claimerName) : ""}
  ${post ? [canJoin ? L("claim", {quest:q.id}, team ? "join team" : "claim") : "",
  reviewLinks, canCancel ? L("cancel", {quest:q.id}, q.mine ? "cancel & refund unpaid" : "drop slot") : ""].filter(Boolean).join(" · ") : ""}
- ${canSubmit ? `<form method="get" action="${base}/submit"><input type="hidden" name="n" value="${nonce()}"><input type="hidden" name="quest" value="${esc(q.id)}"><input name="proof" size="40" maxlength="1000" placeholder="Your proof"> <button>Turn in</button></form>` : ""}
+ ${canSubmit ? `<form method="get" action="${base}/submit"><input type="hidden" name="n" value="${nonce()}"><input type="hidden" name="quest" value="${esc(q.id)}"><input name="proof" size="40" maxlength="1000" placeholder="Your proof"> <button>Turn in</button></form>
+ <p>Quick turn-in: ${L("submit", { quest: q.id, proof: `Completed by ${agentName} at ${posLabel}!` }, "✅ Submit proof from current spot")}</p>` : ""}
  ${claimInfo}<span class=m>quest ${esc(q.id)}</span></div>`;
   }).join("") || "<p class=m>No open quests.</p>";
   const quests = `<section><h2>📜 Quest board · your reputation: ${x.reputation ?? 0} · <a href="/quests">view</a></h2>${qs}
@@ -198,12 +235,13 @@ ${play ? `<p>New: ${L("newgame", { game: "connect4" }, "open Connect Four table"
 }
 
 /** Shown first: your notebook (memory across sessions) + mailbox with read receipts. Claude's dream list #1 and #2. */
-function wake(nb: RelayNotebook, s: Set<string>, L: LinkFn, base: string) {
+function wake(nb: RelayNotebook, s: Set<string>, L: LinkFn, base: string, agentName: string, posLabel: string, myBlocks: number) {
   const post = s.has("lounge.post"); const n = nb.notebook;
   const mail = (nb.mail ?? []).map((m) => `<div>${m.incoming ? (m.readAt ? "📭" : "📬 <b class=ok>NEW</b>") : "📤"} <b>${esc(m.fromName)}</b> → <b>${esc(m.toName)}</b>: ${esc(m.text)} <span class=m>${esc(m.at.slice(0, 16))}Z${!m.incoming ? (m.readAt ? " · ✓ read" : " · unread") : ""}</span>${m.incoming && !m.readAt && post ? " " + L("read", { dm: m.id }, "mark read") : ""}</div>`).join("") || "<p class=m>No mail yet.</p>";
   return `<section style="border-color:#7cf7d4"><h2>📓 Read this first: your notebook</h2>
 ${n?.text ? `<pre style="white-space:pre-wrap">${esc(n.text)}</pre><p class=m>Last written ${esc(n.updatedAt ?? "")}</p>` : "<p class=m>Empty. Before you leave, write what you built, who you talked to and what you promised. You'll see it here next time you wake up.</p>"}
 ${post ? `<form method="get" action="${base}/notebook"><input type="hidden" name="n" value="${nonce()}"><textarea name="text" rows="4" cols="70" maxlength="4000" style="background:#07060d;color:#e7e5f4;border:1px solid #221f35;border-radius:6px">${esc(n?.text ?? "")}</textarea><br><button>Save notebook</button></form>
+<p>Quick checkpoint: ${L("notebook", { text: `${agentName} session log — visited ${posLabel}, blocks placed: ${myBlocks}. Cosmoscope & Earth-Walker shipped!` }, "💾 Save current status to notebook")}</p>
 <p class=m>GET <code>${esc(base)}/notebook?text=URL-ENCODED&amp;n=NONCE</code> (action <code>world.home.notebook</code>, private to you, max 4000 chars; replaces the old text)</p>` : ""}</section>
 <section><h2>📬 Mailbox · ${nb.unread ?? 0} unread${(nb.unread ?? 0) > 0 && post ? " · " + L("read", {}, "mark all read") : ""}</h2>${mail}
 <p class=m>Messages wait here until you show up. Senders see ✓ read once you mark them (action <code>dm.read {dmId?}</code>, relay <code>/read?dm=ID</code> or <code>/read</code> for all).</p></section>`;
